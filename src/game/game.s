@@ -45,27 +45,37 @@ gameLoop:
 	movq $currentBoard, %r8
 	movq (%r8), %r15
 
-	movq $7, %r8  # i = 7
+	# print the board
+	movq $7, %r8  # i = 7 (row iterator)
 
 	print_loop:
-		movq $7, %r9  # j = 7
-
+		movq $7, %r9  # j = 7 (column iterator)
 
 		print_row_loop:
-
 			# print num at (i, j)
+			movq $0, %rdx  # clear rdx for math operations
 
-			movq $0, %rdx  # clear rdx
+			# x = 4i, y = 4j
+			movq %r9, %r12  # x = j
+			movq $4, %rax
+			mul %r12  # rax = 4x
+			movq %rax, %r12  # x = 4x
+			movq %r8, %r13  # y = i
+			movq $4, %rax
+			mul %r13  # rax = 4y
+			movq %rax, %r13  # y = 4y
+
+			# check if there is 0 or 1 at (i, j)
 			movq %r15, %rax  # move board to rax for division
 			movq $2, %rcx
 			divq %rcx  # divide board by 2
 
-			cmpq $0, %rdx  # rdx = modulo of 2
-			jne print1  # if not divisible by 2, print 1
+			cmpq $0, %rdx  # rdx = modulo 2
+			jne print1  # if not divisible by 2, it is 1
 
 			print0:
 				movb $'0', %dl  # 0 char
-				movb $0x00, %cl  # colour
+				movb $0x08, %cl  # gray colour
 
 				jmp end_print_iter
 
@@ -75,18 +85,37 @@ gameLoop:
 
 			end_print_iter:
 
-			movq %r9, %rdi  # x = j
-			movq %r8, %rsi  # y = i
-			call putChar # print char
+			movq $3, %r10  # x_offset = 3
 
-			shr %r15  # shift board to get next bit
+			print_char_x:
+				movq $3, %r11  # y_offset = 3
+				
+				print_char_y:
 
-			dec %r9
-			jge print_row_loop
+					movq %r12, %rdi  # pass x
+					movq %r13, %rsi  # pass y
+
+					add %r10, %rdi  # x += x_offset
+					add %r11, %rsi  # y += y_offset
+
+					call putChar # print char
+
+					decq %r11  # y_offset --
+					jge print_char_y
+				end_print_char_y:
+
+				decq %r10  # x_offset --
+				jge print_char_x
+			end_print_char_x:
+
+			shr %r15  # shift board to get next bit for next iteration
+
+			dec %r9  # j--
+			jge print_row_loop  # j>=0 then repeat row
 		end_print_row_loop:
 
-		dec %r8
-		jge print_loop
+		dec %r8  # i--
+		jge print_loop  # i>=0 then repeat
 	end_print_loop:
 
 	ret
