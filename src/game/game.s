@@ -37,6 +37,12 @@ cornerPieces: .quad 0x0620064002600460
 .section .game.text
 
 gameInit:
+
+	# clear the screen
+
+	movq $79, %r8  # x = 79
+	movq $24, %r9  # y = 24
+
 	ret
 
 gameLoop:
@@ -55,15 +61,15 @@ gameLoop:
 			# print num at (i, j)
 			movq $0, %rdx  # clear rdx for math operations
 
-			# x = 4i, y = 4j
+			# x = 2i, y = 2j
 			movq %r9, %r12  # x = j
-			movq $4, %rax
-			mul %r12  # rax = 4x
-			movq %rax, %r12  # x = 4x
+			movq $2, %rax
+			mul %r12  # rax = 2x
+			movq %rax, %r12  # x = 2x
 			movq %r8, %r13  # y = i
-			movq $4, %rax
-			mul %r13  # rax = 4y
-			movq %rax, %r13  # y = 4y
+			movq $2, %rax
+			mul %r13  # rax = 2y
+			movq %rax, %r13  # y = 2y
 
 			# check if there is 0 or 1 at (i, j)
 			movq %r15, %rax  # move board to rax for division
@@ -85,10 +91,10 @@ gameLoop:
 
 			end_print_iter:
 
-			movq $3, %r10  # x_offset = 3
+			movq $1, %r10  # x_offset = 3
 
 			print_char_x:
-				movq $3, %r11  # y_offset = 3
+				movq $1, %r11  # y_offset = 3
 				
 				print_char_y:
 
