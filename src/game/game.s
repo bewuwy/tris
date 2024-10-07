@@ -40,8 +40,27 @@ gameInit:
 
 	# clear the screen
 
-	movq $79, %r8  # x = 79
 	movq $24, %r9  # y = 24
+
+	clear_row:
+		movq $79, %r8  # x = 79
+
+		clear_char:
+
+			movq %r8, %rdi  # pass x
+			movq %r9, %rsi  # pass y
+			movq $0, %rdx  # char
+			movq $0, %rcx  # colour
+
+			call putChar
+
+			decq %r8  # x--
+			jge clear_char
+		end_clear_char:
+
+		decq %r9  # y--
+		jge clear_row
+	end_clear_row:
 
 	ret
 
@@ -70,6 +89,10 @@ gameLoop:
 			movq $2, %rax
 			mul %r13  # rax = 2y
 			movq %rax, %r13  # y = 2y
+
+			# add padding to x,y
+			add $32, %r12
+			add $4, %r13
 
 			# check if there is 0 or 1 at (i, j)
 			movq %r15, %rax  # move board to rax for division
