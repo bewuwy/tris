@@ -78,6 +78,8 @@ gameInit:
 
 	movq $0, %r14  # clear falling piece
 
+	movq $0, score  # clear score
+
 	ret
 
 gameLoop:
@@ -99,6 +101,9 @@ gameLoop:
 	cmpb $20, gravityCounter
 	jl end_gravity_tick
 	gravity_tick:
+
+		inc score  # score ++
+
 		shr $8, %r14  # move falling piece 1 row down	
 		mov $0, gravityCounter  # reset gravity counter
 
@@ -206,5 +211,118 @@ gameLoop:
 		dec %r8  # i--
 		jge print_loop  # i>=0 then repeat
 	end_print_loop:
+
+	# print "score:"
+	movq $1, %rsi  # y = 1
+	movq $15, %rcx  # color = white
+
+	movq $1, %rdi  # x = 1
+	movq $'S', %rdx
+	call putChar
+
+	movq $2, %rdi  # x = 2
+	movq $1, %rsi  # y = 1
+	movq $'C', %rdx
+	call putChar
+
+	movq $3, %rdi  # x = 3
+	movq $1, %rsi  # y = 1
+	movq $'O', %rdx
+	call putChar
+
+	movq $4, %rdi  # x = 4
+	movq $1, %rsi  # y = 1
+	movq $'R', %rdx
+	call putChar
+
+	movq $5, %rdi  # x = 5
+	movq $1, %rsi  # y = 1
+	movq $'E', %rdx
+	call putChar
+
+	movq $6, %rdi  # x = 6
+	movq $1, %rsi  # y = 1
+	movq $':', %rdx
+	call putChar
+
+	# print score value
+	movq score, %r8
+
+	movq %r8, %rax  # div by 10 to get last digit
+	movq $10, %rcx
+	movq $0, %rdx
+	div %rcx  # last digit is in rdx
+	addq $48, %rdx  # convert last digit to ASCII
+	movq %rax, %r8
+
+	movq $13, %rdi  # x = 13
+	movq $1, %rsi  # y = 1
+	call putChar
+
+	movq %r8, %rax  # div by 10 to get 2nd last digit
+	movq $10, %rcx
+	movq $0, %rdx
+	div %rcx  # last digit is in rdx
+	addq $48, %rdx  # convert digit to ASCII
+	movq %rax, %r8
+
+	movq $12, %rdi  # x = 12
+	movq $1, %rsi  # y = 1
+	call putChar
+
+	movq %r8, %rax  # div by 10 to get 2nd last digit
+	movq $10, %rcx
+	movq $0, %rdx
+	div %rcx  # last digit is in rdx
+	addq $48, %rdx  # convert digit to ASCII
+	movq %rax, %r8
+
+	movq $11, %rdi  # x = 11
+	movq $1, %rsi  # y = 1
+	call putChar
+
+	movq %r8, %rax  # div by 10 to get 2nd last digit
+	movq $10, %rcx
+	movq $0, %rdx
+	div %rcx  # last digit is in rdx
+	addq $48, %rdx  # convert digit to ASCII
+	movq %rax, %r8
+
+	movq $10, %rdi  # x = 10
+	movq $1, %rsi  # y = 1
+	call putChar
+
+	movq %r8, %rax  # div by 10 to get 2nd last digit
+	movq $10, %rcx
+	movq $0, %rdx
+	div %rcx  # last digit is in rdx
+	addq $48, %rdx  # convert digit to ASCII
+	movq %rax, %r8
+
+	movq $9, %rdi  # x = 9
+	movq $1, %rsi  # y = 1
+	call putChar
+
+	movq %r8, %rax  # div by 10 to get 2nd last digit
+	movq $10, %rcx
+	movq $0, %rdx
+	div %rcx  # last digit is in rdx
+	addq $48, %rdx  # convert digit to ASCII
+	movq %rax, %r8
+
+	movq $8, %rdi  # x = 8
+	movq $1, %rsi  # y = 1
+	call putChar
+
+	# add leading 0s
+	movq $'0', %rdx
+
+	movq $14, %rdi  # x = 14
+	movq $1, %rsi  # y = 1
+	call putChar
+
+	movq $15, %rdi  # x = 15
+	movq $1, %rsi  # y = 1
+	call putChar
 
 	ret
