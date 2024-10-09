@@ -17,6 +17,18 @@ You should have received a copy of the GNU General Public License
 along with gamelib-x64. If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+TODO:
+	- scale blocks horizontally by 3, vertically by 2 when printing
+	- controls
+	- random block spawning
+	- score
+	- lose condition
+	- saving high score
+	- retry
+	- hire a SCRUM master
+*/
+
 .file "src/game/game.s"
 
 .data
@@ -25,7 +37,9 @@ score: .int 0
 initBoard: .quad 0x8181818181818181
 currentBoard: .quad 0x8181818181818181
 
-cornerPieces: .quad 0x0620064002600460
+brCornerPiece: .word 0x818
+
+gravityCounter: .byte 0
 
 .text
 
@@ -62,13 +76,59 @@ gameInit:
 		jge clear_row
 	end_clear_row:
 
+	movq $0, %r14  # clear falling piece
+
 	ret
 
 gameLoop:
 
 	# get current board to r15
-	movq $currentBoard, %r8
-	movq (%r8), %r15
+	movq currentBoard, %r15
+
+	# check if there is no falling piece (r14 is empty)
+	cmpq $0, %r14
+	jne end_spawn_piece
+	spawn_piece:
+
+		movw brCornerPiece, %r14w  # get br piece to r14
+		shl $48, %r14  # add leading zeroes to the piece
+
+	end_spawn_piece:
+
+	inc gravityCounter
+	cmpb $20, gravityCounter
+	jl end_gravity_tick
+	gravity_tick:
+		shr $8, %r14  # move falling piece 1 row down	
+		mov $0, gravityCounter  # reset gravity counter
+
+		movq %r15, %r8  # copy current board to r8
+		movq %r15, %r9  # copy current board to r9
+
+		# check if it has fallen on another piece
+		or %r14, %r8
+		xor %r14, %r9
+		cmpq %r8, %r9
+		jne put_block 
+
+		# check if it has fallen on the ground
+		movb %r14b, %r8b
+		cmpb $0, %r8b
+		jne put_block_bottom
+
+		jmp end_put_block
+
+		put_block:
+			shl $8, %r14  # move the piece back up by 1 row
+		put_block_bottom:
+			or %r14, %r15  # put piece on board
+			mov %r15, currentBoard # save current board (with piece) to memory
+			movq $0, %r14  # clear falling piece
+		end_put_block: 
+	end_gravity_tick:
+
+	# add the falling piece to board 
+	or %r14, %r15
 
 	# print the board
 	movq $7, %r8  # i = 7 (row iterator)
