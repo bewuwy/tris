@@ -19,7 +19,6 @@ along with gamelib-x64. If not, see <http://www.gnu.org/licenses/>.
 
 /*
 TODO:
-	- scale blocks horizontally by 3, vertically by 2 when printing
 	- controls
 	- random block spawning
 	- score
@@ -98,7 +97,7 @@ gameLoop:
 	end_spawn_piece:
 
 	inc gravityCounter
-	cmpb $20, gravityCounter
+	cmpb $30, gravityCounter
 	jl end_gravity_tick
 	gravity_tick:
 
@@ -145,18 +144,18 @@ gameLoop:
 			# print num at (i, j)
 			movq $0, %rdx  # clear rdx for math operations
 
-			# x = 2i, y = 2j
+			# x = 3i, y = 2j
 			movq %r9, %r12  # x = j
-			movq $2, %rax
-			mul %r12  # rax = 2x
-			movq %rax, %r12  # x = 2x
+			movq $3, %rax
+			mul %r12  # rax = 3x
+			movq %rax, %r12  # x = 3x
 			movq %r8, %r13  # y = i
 			movq $2, %rax
 			mul %r13  # rax = 2y
 			movq %rax, %r13  # y = 2y
 
 			# add padding to x,y
-			add $32, %r12
+			add $28, %r12
 			add $4, %r13
 
 			# check if there is 0 or 1 at (i, j)
@@ -179,10 +178,10 @@ gameLoop:
 
 			end_print_iter:
 
-			movq $1, %r10  # x_offset = 3
+			movq $2, %r10  # x_offset = 2
 
 			print_char_x:
-				movq $1, %r11  # y_offset = 3
+				movq $1, %r11  # y_offset = 1
 				
 				print_char_y:
 
