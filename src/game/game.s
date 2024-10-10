@@ -19,7 +19,7 @@ along with gamelib-x64. If not, see <http://www.gnu.org/licenses/>.
 
 /*
 TODO:
-	- controls
+	- controls - check if you can go left/right
 	- random block spawning
 	- score
 	- lose condition
@@ -54,7 +54,6 @@ gameInit:
 	# clear the screen
 
 	movq $24, %r9  # y = 24
-
 	clear_row:
 		movq $79, %r8  # x = 79
 
@@ -96,6 +95,53 @@ gameLoop:
 
 	end_spawn_piece:
 
+	# check for user input
+	# TODO FIX: check for collision when moving pieces
+	call readKeyCode
+
+	# check for "A" input (30)
+	cmp $30, %rax
+	jne end_input_left
+	input_left:
+		shl $1, %r14  # shift the piece left
+
+		jmp end_input
+	end_input_left:
+
+	# check for "D" input (32)
+	cmp $32, %rax
+	jne end_input_right
+	input_right:
+		shr $1, %r14  # shift the piece right
+
+		jmp end_input
+	end_input_right:
+
+	# check for "S" input (31)
+	cmp $31, %rax
+	jne end_input_down
+	input_down:
+		shr $8, %r14  # shift the piece down by 1 row
+
+		jmp end_input
+	end_input_down:
+
+	# check for "R" input (19)
+	cmp $19, %rax
+	jne end_input_restart
+	input_restart:
+		# TODO FIX: down half of the board goes missing when resetting
+		mov initBoard, %r15  # reset current board register
+		mov %r15, currentBoard  # reset stored board
+		movq $0, %r14  # reset falling piece
+		movq $0, score  # reset score
+		movq $0, gravityCounter  # reset gravity counter
+
+		ret  # finish the gameLoop early
+	end_input_restart:
+
+	end_input:
+
 	inc gravityCounter
 	cmpb $30, gravityCounter
 	jl end_gravity_tick
@@ -131,7 +177,7 @@ gameLoop:
 		end_put_block: 
 	end_gravity_tick:
 
-	# add the falling piece to board 
+	# add the falling piece to the board 
 	or %r14, %r15
 
 	# print the board
