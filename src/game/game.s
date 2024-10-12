@@ -33,10 +33,17 @@ TODO:
 .data
 
 score: .int 0
-initBoard: .quad 0x8181818181818181
-currentBoard: .quad 0x8181818181818181
+initBoard: .skip 32, 0x00
+currentBoard: .skip 32
+tempBoard: .skip 32
 
-brCornerPiece: .word 0x818
+fallingBlock: .skip 32, 0x00
+
+currentMode: .byte 0
+
+wall: .quad 0x80018001
+
+brCornerPiece: .quad 0x00800180
 
 gravityCounter: .byte 0
 
@@ -85,13 +92,20 @@ gameLoop:
 	# get current board to r15
 	movq currentBoard, %r15
 
-	# check if there is no falling piece (r14 is empty)
-	cmpq $0, %r14
-	jne end_spawn_piece
-	spawn_piece:
+	# check if there is no falling piece (fallingBlock is 0)
+	mov $3, %r8
+	check_falling_piece_loop:
+		leaq fallingBlock, %rcx
+		mov (%rcx,%r8,8), %r14
+		cmpq $0, %r14
+		jne end_spawn_piece
+		dec %r8
+		jge check_falling_piece_loop
+	end_checkfalling_piece_loop:
 
-		movw brCornerPiece, %r14w  # get br piece to r14
-		shl $48, %r14  # add leading zeroes to the piece
+	spawn_piece:
+		movq brCornerPiece, %r8
+		movq %r8, fallingBlock
 
 	end_spawn_piece:
 
@@ -103,16 +117,58 @@ gameLoop:
 	cmp $30, %rax
 	jne end_input_left
 	input_left:
-		shl $1, %r14  # shift the piece left
-
-		jmp end_input
+		movq $3, %r8
+		shift_left_loop:
+			leaq fallingBlock, %rcx
+			movq (%rcx,%r8,8), %r14
+			mov wall, %r15
+			and %r14, %r15
+			jnz end_save_shift_left
+			shl $1, %r14  # shift the piece left
+			leaq tempBoard, %rcx
+			movq %r14, (%rcx,%r8,8)
+			dec %r8
+			jge shift_left_loop
+		end_shift_left:
+		
+		movq $3, %r8
+		save_shift_left_loop:
+			leaq tempBoard, %rcx
+			movq (%rcx,%r8,8), %r14
+			leaq fallingBlock, %rcx
+			movq %r14, (%rcx,%r8,8)
+			dec %r8
+			jge save_shift_left_loop
+		end_save_shift_left:
 	end_input_left:
 
 	# check for "D" input (32)
 	cmp $32, %rax
 	jne end_input_right
 	input_right:
-		shr $1, %r14  # shift the piece right
+		movq $3, %r8
+		shift_right_loop:
+			leaq fallingBlock, %rcx
+			movq (%rcx,%r8,8), %r14
+			mov wall, %r15
+			and %r14, %r15
+			jnz end_save_shift_right
+			shr $1, %r14  # shift the piece right
+			leaq tempBoard, %rcx
+			movq %r14, (%rcx,%r8,8)
+			dec %r8
+			jge shift_right_loop
+		end_shift_right:
+		
+		movq $3, %r8
+		save_shift_right_loop:
+			leaq tempBoard, %rcx
+			movq (%rcx,%r8,8), %r14
+			leaq fallingBlock, %rcx
+			movq %r14, (%rcx,%r8,8)
+			dec %r8
+			jge save_shift_right_loop
+		end_save_shift_right:
 
 		jmp end_input
 	end_input_right:
@@ -147,65 +203,81 @@ gameLoop:
 	jl end_gravity_tick
 	gravity_tick:
 
-		inc score  # score ++
+		incq score  # score ++
+		movq $24, %r8
 
-		shr $8, %r14  # move falling piece 1 row down	
+		# check if block is at the bottom of the board
+		leaq fallingBlock, %rcx
+		movq (%rcx,%r8), %r14
+		cmpw $0, %r14w
+		jne put_block
+
+		gravity_loop:
+			leaq fallingBlock, %rcx
+			movq (%rcx,%r8), %r14  # load 4 rows of falling piece array
+			shr $16, %r14  # move falling piece 1 row down
+			leaq currentBoard, %rcx
+			movq (%rcx,%r8), %r15 #  load corresponding 4 rows of current board
+			and %r14, %r15
+			jne put_block
+			leaq tempBoard, %rcx
+			movq %r14, (%rcx, %r8)
+			subq $6, %r8
+			jge gravity_loop
+		end_gravity_loop:
+
 		mov $0, gravityCounter  # reset gravity counter
 
-		movq %r15, %r8  # copy current board to r8
-		movq %r15, %r9  # copy current board to r9
-
-		# check if it has fallen on another piece
-		or %r14, %r8
-		xor %r14, %r9
-		cmpq %r8, %r9
-		jne put_block 
-
-		# check if it has fallen on the ground
-		movb %r14b, %r8b
-		cmpb $0, %r8b
-		jne put_block_bottom
-
-		jmp end_put_block
-
 		put_block:
-			shl $8, %r14  # move the piece back up by 1 row
-		put_block_bottom:
-			or %r14, %r15  # put piece on board
-			mov %r15, currentBoard # save current board (with piece) to memory
-			movq $0, %r14  # clear falling piece
+			mov $3, %r8
+			put_block_loop:
+				leaq fallingBlock, %rcx
+				movq (%rcx,%r8, 8), %r14  # load 4 rows of falling piece array
+				leaq currentBoard, %rcx
+				movq (%rcx,%r8, 8), %r15 #  load corresponding 4 rows of current board
+				or %r14, %r15
+				movq %r15, (%rcx,%r8, 8)
+				dec %r8
+				jge put_block_loop
 		end_put_block: 
 	end_gravity_tick:
 
-	# add the falling piece to the board 
-	or %r14, %r15
+	# add the falling piece to the tempBoard for rendering 
+	mov $4, %r8
+	prepare_tmp_board:
+			leaq fallingBlock, %rcx
+			movq (%rcx,%r8), %r14  # load 4 rows of falling piece array
+			leaq currentBoard, %rcx
+			movq (%rcx,%r8), %r15 #  load corresponding 4 rows of current board
+			or %r14, %r15
+			leaq tempBoard, %rcx
+			movq %r15, (%rcx,%r8)
+			dec %r8
+			jge prepare_tmp_board
+	prepare_tmp_board_end: 
 
 	# print the board
-	movq $7, %r8  # i = 7 (row iterator)
+	movq $15, %r8  # i = 15 (row iterator)
 
 	print_loop:
-		movq $7, %r9  # j = 7 (column iterator)
+		movq $15, %r9  # j = 15 (column iterator)
 
 		print_row_loop:
 			# print num at (i, j)
 			movq $0, %rdx  # clear rdx for math operations
 
-			# x = 3i, y = 2j
+			# x = i, y = j
 			movq %r9, %r12  # x = j
-			movq $3, %rax
-			mul %r12  # rax = 3x
-			movq %rax, %r12  # x = 3x
 			movq %r8, %r13  # y = i
-			movq $2, %rax
-			mul %r13  # rax = 2y
-			movq %rax, %r13  # y = 2y
 
 			# add padding to x,y
 			add $28, %r12
 			add $4, %r13
 
 			# check if there is 0 or 1 at (i, j)
-			movq %r15, %rax  # move board to rax for division
+			leaq tempBoard, %rcx
+			movw (%rcx,%r8, 2), %ax  # move row to rax for division
+			shr %r9
 			movq $2, %rcx
 			divq %rcx  # divide board by 2
 
