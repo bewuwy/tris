@@ -33,11 +33,12 @@ TODO:
 .data
 
 score: .int 0
-initBoard: .skip 32, 0x00
+
+initBoard: .skip 32
 currentBoard: .skip 32
 tempBoard: .skip 32
 
-fallingBlock: .skip 32, 0x00
+fallingBlock: .skip 32
 
 currentMode: .byte 0
 
@@ -89,8 +90,6 @@ gameInit:
 
 gameLoop:
 
-	# get current board to r15
-	movq currentBoard, %r15
 
 	# check if there is no falling piece (fallingBlock is 0)
 	mov $3, %r8
@@ -114,89 +113,89 @@ gameLoop:
 	call readKeyCode
 
 	# check for "A" input (30)
-	cmp $30, %rax
-	jne end_input_left
-	input_left:
-		movq $3, %r8
-		shift_left_loop:
-			leaq fallingBlock, %rcx
-			movq (%rcx,%r8,8), %r14
-			mov wall, %r15
-			and %r14, %r15
-			jnz end_save_shift_left
-			shl $1, %r14  # shift the piece left
-			leaq tempBoard, %rcx
-			movq %r14, (%rcx,%r8,8)
-			dec %r8
-			jge shift_left_loop
-		end_shift_left:
+	// cmp $30, %rax
+	// jne end_input_left
+	// input_left:
+	// 	movq $3, %r8
+	// 	shift_left_loop:
+	// 		leaq fallingBlock, %rcx
+	// 		movq (%rcx,%r8,8), %r14
+	// 		mov wall, %r15
+	// 		and %r14, %r15
+	// 		jnz end_save_shift_left
+	// 		shl $1, %r14  # shift the piece left
+	// 		leaq tempBoard, %rcx
+	// 		movq %r14, (%rcx,%r8,8)
+	// 		dec %r8
+	// 		jge shift_left_loop
+	// 	end_shift_left:
 		
-		movq $3, %r8
-		save_shift_left_loop:
-			leaq tempBoard, %rcx
-			movq (%rcx,%r8,8), %r14
-			leaq fallingBlock, %rcx
-			movq %r14, (%rcx,%r8,8)
-			dec %r8
-			jge save_shift_left_loop
-		end_save_shift_left:
-	end_input_left:
+	// 	movq $3, %r8
+	// 	save_shift_left_loop:
+	// 		leaq tempBoard, %rcx
+	// 		movq (%rcx,%r8,8), %r14
+	// 		leaq fallingBlock, %rcx
+	// 		movq %r14, (%rcx,%r8,8)
+	// 		dec %r8
+	// 		jge save_shift_left_loop
+	// 	end_save_shift_left:
+	// end_input_left:
 
-	# check for "D" input (32)
-	cmp $32, %rax
-	jne end_input_right
-	input_right:
-		movq $3, %r8
-		shift_right_loop:
-			leaq fallingBlock, %rcx
-			movq (%rcx,%r8,8), %r14
-			mov wall, %r15
-			and %r14, %r15
-			jnz end_save_shift_right
-			shr $1, %r14  # shift the piece right
-			leaq tempBoard, %rcx
-			movq %r14, (%rcx,%r8,8)
-			dec %r8
-			jge shift_right_loop
-		end_shift_right:
+	// # check for "D" input (32)
+	// cmp $32, %rax
+	// jne end_input_right
+	// input_right:
+	// 	movq $3, %r8
+	// 	shift_right_loop:
+	// 		leaq fallingBlock, %rcx
+	// 		movq (%rcx,%r8,8), %r14
+	// 		mov wall, %r15
+	// 		and %r14, %r15
+	// 		jnz end_save_shift_right
+	// 		shr $1, %r14  # shift the piece right
+	// 		leaq tempBoard, %rcx
+	// 		movq %r14, (%rcx,%r8,8)
+	// 		dec %r8
+	// 		jge shift_right_loop
+	// 	end_shift_right:
 		
-		movq $3, %r8
-		save_shift_right_loop:
-			leaq tempBoard, %rcx
-			movq (%rcx,%r8,8), %r14
-			leaq fallingBlock, %rcx
-			movq %r14, (%rcx,%r8,8)
-			dec %r8
-			jge save_shift_right_loop
-		end_save_shift_right:
+	// 	movq $3, %r8
+	// 	save_shift_right_loop:
+	// 		leaq tempBoard, %rcx
+	// 		movq (%rcx,%r8,8), %r14
+	// 		leaq fallingBlock, %rcx
+	// 		movq %r14, (%rcx,%r8,8)
+	// 		dec %r8
+	// 		jge save_shift_right_loop
+	// 	end_save_shift_right:
 
-		jmp end_input
-	end_input_right:
+	// 	jmp end_input
+	// end_input_right:
 
-	# check for "S" input (31)
-	cmp $31, %rax
-	jne end_input_down
-	input_down:
-		shr $8, %r14  # shift the piece down by 1 row
+	// # check for "S" input (31)
+	// cmp $31, %rax
+	// jne end_input_down
+	// input_down:
+	// 	shr $8, %r14  # shift the piece down by 1 row
 
-		jmp end_input
-	end_input_down:
+	// 	jmp end_input
+	// end_input_down:
 
-	# check for "R" input (19)
-	cmp $19, %rax
-	jne end_input_restart
-	input_restart:
-		# TODO FIX: down half of the board goes missing when resetting
-		mov initBoard, %r15  # reset current board register
-		mov %r15, currentBoard  # reset stored board
-		movq $0, %r14  # reset falling piece
-		movq $0, score  # reset score
-		movq $0, gravityCounter  # reset gravity counter
+	// # check for "R" input (19)
+	// cmp $19, %rax
+	// jne end_input_restart
+	// input_restart:
+	// 	# TODO FIX: down half of the board goes missing when resetting
+	// 	mov initBoard, %r15  # reset current board register
+	// 	mov %r15, currentBoard  # reset stored board
+	// 	movq $0, %r14  # reset falling piece
+	// 	movq $0, score  # reset score
+	// 	movq $0, gravityCounter  # reset gravity counter
 
-		ret  # finish the gameLoop early
-	end_input_restart:
+	// 	ret  # finish the gameLoop early
+	// end_input_restart:
 
-	end_input:
+	// end_input:
 
 	inc gravityCounter
 	cmpb $30, gravityCounter
@@ -226,6 +225,16 @@ gameLoop:
 			jge gravity_loop
 		end_gravity_loop:
 
+		movq 3, %r8	
+		save_gravity_loop:
+			leaq tempBoard, %rcx
+			movq (%rcx,%r8, 8), %r14  # load 4 rows of falling piece array
+			leaq fallingBlock, %rcx
+			movq %r14, (%rcx,%r8, 8)  # load 4 rows of falling piece array
+			dec %r8
+			jge save_gravity_loop
+		end_save_gravity_loop:
+
 		mov $0, gravityCounter  # reset gravity counter
 
 		put_block:
@@ -243,90 +252,55 @@ gameLoop:
 	end_gravity_tick:
 
 	# add the falling piece to the tempBoard for rendering 
-	mov $4, %r8
+	mov $3, %r8
 	prepare_tmp_board:
 			leaq fallingBlock, %rcx
-			movq (%rcx,%r8), %r14  # load 4 rows of falling piece array
+			movq (%rcx,%r8, 8), %r14  # load 4 rows of falling piece array
 			leaq currentBoard, %rcx
-			movq (%rcx,%r8), %r15 #  load corresponding 4 rows of current board
+			movq (%rcx,%r8, 8), %r15 #  load corresponding 4 rows of current board
 			or %r14, %r15
 			leaq tempBoard, %rcx
-			movq %r15, (%rcx,%r8)
+			movq %r15, (%rcx,%r8, 8)
 			dec %r8
 			jge prepare_tmp_board
 	prepare_tmp_board_end: 
+
+	
 
 	# print the board
 	movq $15, %r8  # i = 15 (row iterator)
 
 	print_loop:
-		movq $15, %r9  # j = 15 (column iterator)
-
+			movq $15, %r9  # j = 15
+			movq $0, %r15
+			leaq tempBoard, %rcx
+			movw (%rcx, %r8, 2), %r15w
 		print_row_loop:
 			# print num at (i, j)
-			movq $0, %rdx  # clear rdx for math operations
+			movq $0, %rdx  # clear rdx
+			movq %r15, %rax
 
-			# x = i, y = j
-			movq %r9, %r12  # x = j
-			movq %r8, %r13  # y = i
-
-			# add padding to x,y
-			add $28, %r12
-			add $4, %r13
-
-			# check if there is 0 or 1 at (i, j)
-			leaq tempBoard, %rcx
-			movw (%rcx,%r8, 2), %ax  # move row to rax for division
-			shr %r9
 			movq $2, %rcx
 			divq %rcx  # divide board by 2
-
-			cmpq $0, %rdx  # rdx = modulo 2
-			jne print1  # if not divisible by 2, it is 1
-
+			cmpq $0, %rdx  # rdx = modulo of 2
+			jne print1  # if not divisible by 2, print 1
 			print0:
 				movb $'0', %dl  # 0 char
-				movb $0x08, %cl  # gray colour
-
+				movb $0x01, %cl  # colour
 				jmp end_print_iter
-
 			print1:
 				movb $'B', %dl  # B char
 				movb $0x0f, %cl  # white colour
-
 			end_print_iter:
-
-			movq $2, %r10  # x_offset = 2
-
-			print_char_x:
-				movq $1, %r11  # y_offset = 1
-				
-				print_char_y:
-
-					movq %r12, %rdi  # pass x
-					movq %r13, %rsi  # pass y
-
-					add %r10, %rdi  # x += x_offset
-					add %r11, %rsi  # y += y_offset
-
-					call putChar # print char
-
-					decq %r11  # y_offset --
-					jge print_char_y
-				end_print_char_y:
-
-				decq %r10  # x_offset --
-				jge print_char_x
-			end_print_char_x:
-
-			shr %r15  # shift board to get next bit for next iteration
-
-			dec %r9  # j--
-			jge print_row_loop  # j>=0 then repeat row
+			movq %r9, %rdi  # x = j
+			movq %r8, %rsi  # y = i
+			call putChar # print char
+			shr %r15  # shift board to get next bit
+			dec %r9
+			jge print_row_loop
 		end_print_row_loop:
-
-		dec %r8  # i--
-		jge print_loop  # i>=0 then repeat
+		dec %r8
+		jge print_loop
 	end_print_loop:
 
 	# print "score:"
@@ -364,6 +338,8 @@ gameLoop:
 
 	# print score value
 	movq score, %r8
+	leaq tempBoard, %rcx
+	movq 24(%rcx), %r8
 
 	movq %r8, %rax  # div by 10 to get last digit
 	movq $10, %rcx
