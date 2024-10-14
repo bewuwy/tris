@@ -33,6 +33,7 @@ TODO:
 .data
 
 score: .int 0
+currentPiece: .byte 0
 
 initBoard: .skip 32
 currentBoard: .skip 32
@@ -45,7 +46,7 @@ currentMode: .byte 0
 r_wall: .quad 0x0001000100010001
 l_wall: .quad 0x8000800080008000
 
-brCornerPiece: .quad 0x00800180
+pieces: .skip 112
 
 gravityCounter: .byte 0
 
@@ -59,6 +60,31 @@ gravityCounter: .byte 0
 .section .game.text
 
 gameInit:
+
+	# init pieces in memory
+	leaq pieces, %r8
+	movq $0x00800180, (%r8)  # br corner
+	movq $0x01800080, 8(%r8)  # tr corner
+	movq $0x01000180, 16(%r8)  # bl corner
+	movq $0x01800100, 24(%r8)  # tl corner
+
+	movq $0x0380, 32(%r8)  # horizontal line
+	movq $0x008000800080, %r9
+	movq %r9, 40(%r8)  # vertical line
+
+	movq $0x010000800080, %r9
+	movq %r9, 48(%r8)  # vbend tl
+	movq $0x008001000100, %r9
+	movq %r9, 56(%r8)  # vbend tr
+	movq $0x008000800100, %r9
+	movq %r9, 64(%r8)  # vbend bl
+	movq $0x010001000080, %r9
+	movq %r9, 72(%r8)  # vbend br
+
+	movq $0x03000080, 80(%r8)  # hbend br
+	movq $0x00c00100, 88(%r8)  # hbend bl
+	movq $0x00800300, 96(%r8)  # hbend tr
+	movq $0x010000c0, 104(%r8)  # hbend tl
 
 	# clear the screen
 
@@ -104,12 +130,14 @@ gameLoop:
 	end_checkfalling_piece_loop:
 
 	spawn_piece:
-		movq brCornerPiece, %r8
+		movzb currentPiece, %r9
+		leaq pieces, %rcx
+		movq (%rcx, %r9, 8), %r8
 		movq currentBoard, %r15
 		and %r8, %r15
 		jnz input_restart
 		movq %r8, fallingBlock
-
+		inc currentPiece
 	end_spawn_piece:
 
 	# check for user input
