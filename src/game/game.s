@@ -251,6 +251,7 @@ gameLoop:
 		end_put_block: 
 	end_gravity_tick:
 
+
 	# add the falling piece to the tempBoard for rendering 
 	mov $3, %r8
 	prepare_tmp_board:
@@ -293,7 +294,9 @@ gameLoop:
 				movb $0x0f, %cl  # white colour
 			end_print_iter:
 			movq %r9, %rdi  # x = j
+			add $20, %rdi
 			movq %r8, %rsi  # y = i
+			add $6, %rsi
 			call putChar # print char
 			shr %r15  # shift board to get next bit
 			dec %r9
@@ -338,8 +341,6 @@ gameLoop:
 
 	# print score value
 	movq score, %r8
-	leaq tempBoard, %rcx
-	movq 24(%rcx), %r8
 
 	movq %r8, %rax  # div by 10 to get last digit
 	movq $10, %rcx
