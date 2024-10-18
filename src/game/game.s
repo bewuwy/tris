@@ -33,7 +33,9 @@ score: .int 0
 
 initBoard: .skip 32
 currentBoard: .skip 32
-tempBoard: .skip 32
+
+
+tempBoard: .skip 34 # go fuck yourself
 colorBoard: .skip 128
 
 fallingBlock: .skip 32
@@ -317,6 +319,55 @@ gameLoop:
 		end_put_block: 
 	end_gravity_tick:
 
+	clear_line_tick:
+		movq $0, %r15
+		movq $0, %r8
+		check_line_loop:
+			leaq currentBoard, %rcx
+			movw (%rcx, %r8, 2), %r14w
+			cmpw $0xFFC0, %r14w
+			jne line_not_full
+			line_full:
+				add $0x8000, %r15
+			line_not_full:
+			shr %r15
+			inc %r8
+			cmp $15, %r8
+			jle check_line_loop
+		end_check_line_loop:
+		movq $15, %r8
+		movq $0, %r9
+		shift_line_loop:
+			mov $0, %rdx
+			mov %r15, %rax
+			shr %r15
+			mov $2, %rcx
+			div %rcx
+			cmp $0, %rdx
+			je end_inc_offset
+			inc_offset:
+				inc %r9
+				movq %r9, score
+			end_inc_offset:
+			leaq currentBoard, %rcx
+			movw (%rcx, %r8, 2), %r14w
+			movq %r8, %r11
+			addq %r9, %r11
+			leaq tempBoard, %rcx
+			movw %r14w, (%rcx, %r11, 2)
+			dec %r8
+			jge shift_line_loop
+		end_shift_line_loop:
+		movq $3, %r8
+		save_line_clear_loop:
+			leaq tempBoard, %rcx  # load temp board address
+			movq (%rcx, %r8, 8), %r14  # load 4 rows of falling piece array
+			leaq currentBoard, %rcx  # load falling block address
+			movq %r14, (%rcx, %r8, 8)  # load 4 rows of falling piece array
+			dec %r8  # i--
+			jge save_line_clear_loop
+		end_save_line_clear_loop:
+	end_clear_line_tick:
 
 	# add the falling piece to the tempBoard for rendering 
 	mov $3, %r8
