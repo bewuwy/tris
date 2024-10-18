@@ -298,23 +298,40 @@ gameLoop:
 
 		jmp end_put_block
 		put_block:
-			mov $3, %r8
-			mov $12, %r9
+			mov $15, %r8
 			put_block_loop:
 				leaq fallingBlock, %rcx
-				movq (%rcx,%r8, 8), %r14  # load 4 rows of falling piece array
+				movw (%rcx,%r8,2), %r14w  # load 1 row of falling piece array
 				leaq currentBoard, %rcx
-				leaq colorBoard, %r11
-				movq (%rcx,%r8, 8), %r15 #  load corresponding 4 rows of current board
-				or %r14, %r15
-				movq %r15, (%rcx,%r8, 8)
-				// mov $10, fallingColor  # TODO: hard coded color
-				// mov fallingColor, %r12
-				// movq %r12, (%r11,%r9,8)
+				movw (%rcx,%r8, 2), %r15w #  load corresponding row of current board
+				or %r14w, %r15w
+				movw %r15w, (%rcx,%r8, 2)
+
+				mov $0xA, fallingColor  # TODO: hard coded color
+				movq $0, %rax
+				movb fallingColor, %al
+				mov $0x1111111111111111, %rcx
+				mul %rcx  # falling color array
+
+				mov %rax, %r13
+
+				movq $0, %rax
+				movw %r14w, %ax
+				movq $15, %rcx
+				mul %rcx
+				mov %rax, %rdx # falling block colour mask
+				and %rdx, %r13 # falling color to save
+
+				leaq colorBoard, %rcx
+				movq (%rcx,%r8,8), %r12
+				//not %rdx
+				//and %rdx, %r12
+				or %r13, %r12
+				movq %r12, (%rcx,%r8,8)
+
 				leaq fallingBlock, %rcx
-				movq $0,(%rcx,%r8, 8)  # load 4 rows of falling piece array
+				movw $0,(%rcx,%r8, 2)  # load 4 rows of falling piece array
 				dec %r8
-				sub $4, %r9
 				jge put_block_loop
 		end_put_block: 
 	end_gravity_tick:
