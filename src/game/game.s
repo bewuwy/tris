@@ -19,12 +19,9 @@ along with gamelib-x64. If not, see <http://www.gnu.org/licenses/>.
 
 /*
 TODO:
-	- controls - check if you can go left/right
-	- random block spawning
 	- score
-	- lose condition
+	- colors
 	- saving high score
-	- retry
 	- hire a SCRUM master
 */
 
@@ -37,8 +34,10 @@ score: .int 0
 initBoard: .skip 32
 currentBoard: .skip 32
 tempBoard: .skip 32
+colorBoard: .skip 128
 
 fallingBlock: .skip 32
+fallingColor: .skip 4
 
 currentMode: .byte 0
 
@@ -94,7 +93,6 @@ gameInit:
 		movq $79, %r8  # x = 79
 
 		clear_char:
-
 			movq %r8, %rdi  # pass x
 			movq %r9, %rsi  # pass y
 			movq $0, %rdx  # char
@@ -156,7 +154,6 @@ gameLoop:
 	end_spawn_piece:
 
 	# check for user input
-	# TODO FIX: check for collision when moving pieces
 	call readKeyCode
 
 	# check for "A" input (30)
@@ -300,16 +297,22 @@ gameLoop:
 		jmp end_put_block
 		put_block:
 			mov $3, %r8
+			mov $12, %r9
 			put_block_loop:
 				leaq fallingBlock, %rcx
 				movq (%rcx,%r8, 8), %r14  # load 4 rows of falling piece array
 				leaq currentBoard, %rcx
+				leaq colorBoard, %r11
 				movq (%rcx,%r8, 8), %r15 #  load corresponding 4 rows of current board
 				or %r14, %r15
 				movq %r15, (%rcx,%r8, 8)
+				// mov $10, fallingColor  # TODO: hard coded color
+				// mov fallingColor, %r12
+				// movq %r12, (%r11,%r9,8)
 				leaq fallingBlock, %rcx
 				movq $0,(%rcx,%r8, 8)  # load 4 rows of falling piece array
 				dec %r8
+				sub $4, %r9
 				jge put_block_loop
 		end_put_block: 
 	end_gravity_tick:
@@ -333,10 +336,13 @@ gameLoop:
 	movq $15, %r8  # i = 15 (row iterator)
 
 	print_loop:
-			movq $15, %r9  # j = 15
-			movq $0, %r15
-			leaq tempBoard, %rcx
-			movw (%rcx, %r8, 2), %r15w
+		movq $15, %r9  # j = 15
+		movq $0, %r15
+		leaq tempBoard, %rcx
+		leaq colorBoard, %r11
+		movw (%rcx, %r8, 2), %r15w
+		movq (%r11, %r8, 8), %r11
+
 		print_row_loop:
 			# print num at (i, j)
 			movq $0, %rdx  # clear rdx
@@ -351,8 +357,13 @@ gameLoop:
 				movb $0x01, %cl  # colour
 				jmp end_print_iter
 			print1:
+				mov $0, %rcx
+				movb %r11b, %cl  # colour
+				movb %cl, %dl
+				shl $4, %cl
+				or %dl, %cl
 				movb $'B', %dl  # B char
-				movb $0x0f, %cl  # white colour
+				// shr $4, %cl
 			end_print_iter:
 			movq %r9, %rdi  # x = j
 			add $20, %rdi
@@ -360,6 +371,7 @@ gameLoop:
 			add $6, %rsi
 			call putChar # print char
 			shr %r15  # shift board to get next bit
+			shr $4, %r11  # shift color board by 4 bits
 			dec %r9
 			jge print_row_loop
 		end_print_row_loop:
