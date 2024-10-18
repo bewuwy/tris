@@ -236,7 +236,6 @@ gameLoop:
 	cmp $19, %rax
 	jne end_input_restart
 	input_restart:
-		# TODO: add restart
 		mov $3, %r8
 		movb $0, gravityCounter
 		movq $0, score
@@ -250,6 +249,13 @@ gameLoop:
 			dec %r8
 			jge restart_loop
 		end_restart_loop:
+		mov $15, %r8
+		restart_colors_loop:
+			leaq colorBoard, %rcx
+			movq $0, (%rcx, %r8, 8)
+			dec %r8
+			jge restart_colors_loop
+		end_restart_colors_loop:
 		ret  # finish the gameLoop early
 	end_input_restart:
 
@@ -305,7 +311,7 @@ gameLoop:
 				leaq currentBoard, %rcx
 				movw (%rcx,%r8, 2), %r15w #  load corresponding row of current board
 				or %r14w, %r15w
-				movw %r15w, (%rcx,%r8, 2)
+				movw %r15w, (%rcx,%r8, 2) # save falling block to current board
 
 				mov $0xA, fallingColor  # TODO: hard coded color
 				movq $0, %rax
@@ -317,9 +323,21 @@ gameLoop:
 
 				movq $0, %rax
 				movw %r14w, %ax
-				movq $15, %rcx
-				mul %rcx
-				mov %rax, %rdx # falling block colour mask
+				mov $0, %rdx
+				mov $15, %rcx
+				make_mask_loop:
+					mov $0x8000, %rbx
+					and %r14w, %bx
+					shl $4, %rdx
+					shl %r14w
+					cmpq $0, %rbx
+					je nic
+					add $0xf, %rdx
+					nic:
+					dec %rcx
+					jge make_mask_loop
+				end_make_mask_loop:
+
 				and %rdx, %r13 # falling color to save
 
 				leaq colorBoard, %rcx
@@ -330,7 +348,7 @@ gameLoop:
 				movq %r12, (%rcx,%r8,8)
 
 				leaq fallingBlock, %rcx
-				movw $0,(%rcx,%r8, 2)  # load 4 rows of falling piece array
+				movw $0,(%rcx,%r8, 2)
 				dec %r8
 				jge put_block_loop
 		end_put_block: 
@@ -421,16 +439,21 @@ gameLoop:
 			cmpq $0, %rdx  # rdx = modulo of 2
 			jne print1  # if not divisible by 2, print 1
 			print0:
+				mov $0, %rcx
+				//movb %r11b, %cl  # colour
+				movb $1, %dl
+				//shl $4, %cl
+				or %dl, %cl
 				movb $'0', %dl  # 0 char
-				movb $0x01, %cl  # colour
 				jmp end_print_iter
 			print1:
 				mov $0, %rcx
-				movb %r11b, %cl  # colour
+				movb %r11b, %cl
+				and $0xf, %cl  # colour
 				movb %cl, %dl
 				shl $4, %cl
 				or %dl, %cl
-				movb $'B', %dl  # B char
+				movb $' ', %dl  # B char
 				// shr $4, %cl
 			end_print_iter:
 			movq %r9, %rdi  # x = j
