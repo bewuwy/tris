@@ -88,6 +88,9 @@ gameInit:
 	movq $0x00800300, 96(%r8)  # hbend tr
 	movq $0x010000c0, 104(%r8)  # hbend tl
 
+	# init falling color
+	mov $9, fallingColor  # 0xA
+
 	# clear the screen
 
 	movq $24, %r9  # y = 24
@@ -313,7 +316,6 @@ gameLoop:
 				or %r14w, %r15w
 				movw %r15w, (%rcx,%r8, 2) # save falling block to current board
 
-				mov $0xA, fallingColor  # TODO: hard coded color
 				movq $0, %rax
 				movb fallingColor, %al
 				mov $0x1111111111111111, %rcx
@@ -351,6 +353,15 @@ gameLoop:
 				movw $0,(%rcx,%r8, 2)
 				dec %r8
 				jge put_block_loop
+			end_put_block_loop:
+
+			# update falling color
+			inc fallingColor
+			cmpb $14, fallingColor
+			jle end_reset_falling_color
+			reset_falling_color:
+				mov $9, fallingColor
+			end_reset_falling_color:
 		end_put_block: 
 	end_gravity_tick:
 
@@ -441,10 +452,10 @@ gameLoop:
 			print0:
 				mov $0, %rcx
 				//movb %r11b, %cl  # colour
-				movb $1, %dl
+				movb $7, %dl
 				//shl $4, %cl
 				or %dl, %cl
-				movb $'0', %dl  # 0 char
+				movb $'|', %dl  # | char
 				jmp end_print_iter
 			print1:
 				mov $0, %rcx
@@ -453,6 +464,16 @@ gameLoop:
 				movb %cl, %dl
 				shl $4, %cl
 				or %dl, %cl
+
+				cmp $0, %rcx
+				jne end_get_falling_color
+				get_falling_color:
+					movb fallingColor, %cl
+					movb %cl, %dl
+					shl $4, %cl
+					or %dl, %cl
+				end_get_falling_color:
+
 				movb $' ', %dl  # B char
 				// shr $4, %cl
 			end_print_iter:
