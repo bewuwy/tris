@@ -345,8 +345,8 @@ gameLoop:
 
 				leaq colorBoard, %rcx
 				movq (%rcx,%r8,8), %r12
-				//not %rdx
-				//and %rdx, %r12
+				not %rdx
+				and %rdx, %r12
 				or %r13, %r12
 				movq %r12, (%rcx,%r8,8)
 
@@ -434,13 +434,14 @@ gameLoop:
 	movq $15, %r8  # i = 15 (row iterator)
 
 	print_loop:
-		movq $15, %r9  # j = 15 (column iterator)
+		movq $9, %r9  # j = 15
 		movq $0, %r15
 		leaq tempBoard, %rcx
 		leaq colorBoard, %r11
-		movw (%rcx, %r8, 2), %r15w
-		movq (%r11, %r8, 8), %r11
-
+		movw (%rcx, %r8, 2), %r15w  #row to print
+		movq (%r11, %r8, 8), %r11  #colours to print
+		shr $6, %r15
+		shr $24, %r11
 		print_row_loop:
 			# print num at (i, j)
 			movq $0, %rdx  # clear rdx
@@ -487,6 +488,7 @@ gameLoop:
 			shr $4, %r11  # shift color board by 4 bits
 
 			dec %r9
+			//cmp $6, %r9
 			jge print_row_loop
 		end_print_row_loop:
 		dec %r8
