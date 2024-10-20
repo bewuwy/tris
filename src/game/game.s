@@ -54,6 +54,7 @@ gravityCounter: .byte 0
 .text
 
 scoreString: .asciz "SCORE:"
+highScoreString: .asciz "HIGHSCORE:"
 
 .global gameInit
 .global gameLoop
@@ -480,9 +481,9 @@ gameLoop:
 				// shr $4, %cl
 			end_print_iter:
 			movq %r9, %rdi  # x = j
-			add $20, %rdi
+			add $32, %rdi  # horizontal padding
 			movq %r8, %rsi  # y = i
-			add $6, %rsi
+			add $4, %rsi  # vertical padding
 			call putChar # print char
 			shr %r15  # shift board to get next bit
 			shr $4, %r11  # shift color board by 4 bits
@@ -494,6 +495,60 @@ gameLoop:
 		dec %r8
 		jge print_loop
 	end_print_loop:
+
+	# frame
+	# y = {4,20}, x = [31,42]
+
+	movq $31, %r8  # x
+	movq $4, %r9  # y
+	print_frame_horizontal_loop:
+		movq $3, %rcx
+		movq $0, %rdx
+		movb $'=', %dl
+
+		mov %r8, %rdi
+		mov %r9, %rsi
+		call putChar
+
+		inc %r8
+		cmpq $42, %r8
+		jle print_frame_horizontal_loop		
+	end_print_frame_horizontal_loop:
+
+	cmp $20, %r9
+	je end_horizontal_frame
+
+	movq $20, %r9
+	movq $31, %r8
+	jmp print_frame_horizontal_loop
+
+	end_horizontal_frame:
+
+	# x = {31,42}, y = [4,20]
+	movq $31, %r8  # x
+	movq $4, %r9  # y
+	print_frame_vertical_loop:
+		movq $3, %rcx
+		movq $0, %rdx
+		movb $'!', %dl
+
+		mov %r8, %rdi
+		mov %r9, %rsi
+		call putChar
+
+		inc %r9
+		cmpq $20, %r9
+		jle print_frame_vertical_loop		
+	end_print_frame_vertical_loop:
+
+	cmp $42, %r8
+	je end_vertical_frame
+
+	movq $42, %r8
+	movq $4, %r9
+	jmp print_frame_vertical_loop
+
+	end_vertical_frame:
 
 	# print "score:"
 	movq $0, %r13  # i = 0
@@ -518,72 +573,24 @@ gameLoop:
 
 	# print score value
 	movq score, %r8
+	movq $13, %r9  # i = 13
 
-	movq %r8, %rax  # div by 10 to get last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert last digit to ASCII
-	movq %rax, %r8
+	print_score_loop:
+		movq %r8, %rax  # div by 10 to get last digit
+		movq $10, %rcx
+		movq $0, %rdx
+		div %rcx  # last digit is in rdx
+		addq $48, %rdx  # convert last digit to ASCII
+		movq %rax, %r8
 
-	movq $13, %rdi  # x = 13
-	movq $1, %rsi  # y = 1
-	call putChar
+		movq %r9, %rdi  # x = i
+		movq $1, %rsi  # y = 1
+		call putChar
 
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
-
-	movq $12, %rdi  # x = 12
-	movq $1, %rsi  # y = 1
-	call putChar
-
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
-
-	movq $11, %rdi  # x = 11
-	movq $1, %rsi  # y = 1
-	call putChar
-
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
-
-	movq $10, %rdi  # x = 10
-	movq $1, %rsi  # y = 1
-	call putChar
-
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
-
-	movq $9, %rdi  # x = 9
-	movq $1, %rsi  # y = 1
-	call putChar
-
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
-
-	movq $8, %rdi  # x = 8
-	movq $1, %rsi  # y = 1
-	call putChar
+		dec %r9
+		cmp $8, %r9
+		jge print_score_loop
+	end_print_score_loop:
 
 	# add leading 0s
 	movq $'0', %rdx
@@ -595,5 +602,26 @@ gameLoop:
 	movq $15, %rdi  # x = 15
 	movq $1, %rsi  # y = 1
 	call putChar
+
+	# print high score
+	movq $0, %r13  # i = 0
+	leaq highScoreString, %r12
+	print_highscore_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_highscore_label_loop
+
+		movq %r13, %rdi
+		addq $1, %rdi  # get x
+
+		movq $3, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_highscore_label_loop
+	end_print_highscore_label_loop:
 
 	ret
