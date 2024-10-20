@@ -27,7 +27,11 @@ TODO:
 
 .file "src/game/game.s"
 
-.data
+.global gameInit
+.global gameLoop
+
+.section .game.data
+
 
 score: .int 0
 
@@ -40,7 +44,7 @@ colorBoard: .skip 128
 fallingBlock: .skip 32
 fallingColor: .skip 4
 
-currentMode: .byte 0
+gameState: .byte 0  # 0 - main menu, 1 - game, 2 - game over dialog, 3 - high score input
 
 r_wall: .quad 0x0040004000400040
 l_wall: .quad 0x8000800080008000
@@ -51,17 +55,30 @@ randomGen: .byte 0xa7
 
 gravityCounter: .byte 0
 
-.text
+.section .game.text
 
 scoreString: .asciz "SCORE:"
 highScoreString: .asciz "HIGHSCORE:"
 
-.global gameInit
-.global gameLoop
-
-.section .game.data
-
-.section .game.text
+titleString: 
+.ascii " _______   _"
+.word 0x0A  # new line
+.ascii "|__   __| (_)"
+.word 0x0A  # new line
+.ascii "   | |_ __ _ ___ "
+.word 0x0A  # new line
+.ascii "   | | '__| / __|"
+.word 0x0A  # new line
+.ascii "   | | |  | \__ \\"
+.word 0x0A  # new line
+.ascii "   |_|_|  |_|___/"
+.word 0x0A  # new line
+.word 0x0A  # new line
+.ascii "---- the game ----"
+.word 0x0A  # new line
+.word 0x0A  # new line
+.ascii " press S to start"
+.byte 0x00
 
 gameInit:
 
@@ -91,10 +108,9 @@ gameInit:
 	movq $0x010000c0, 104(%r8)  # hbend tl
 
 	# init falling color
-	mov $9, fallingColor  # 0xA
+	mov $9, fallingColor
 
 	# clear the screen
-
 	movq $24, %r9  # y = 24
 	clear_row:
 		movq $79, %r8  # x = 79
@@ -123,6 +139,10 @@ gameInit:
 
 gameLoop:
 
+	movb gameState, %r8b
+	cmpb $0, %r8b
+	je main_menu_loop
+
 	# update random gen
 	mov randomGen, %r8b
 	mov %r8b, %r9b
@@ -145,7 +165,6 @@ gameLoop:
 	end_checkfalling_piece_loop:
 
 	spawn_piece:
-	
 		movq randomGen, %rax
 		movq $0, %rdx
 		movq $14, %rcx
@@ -623,5 +642,88 @@ gameLoop:
 		inc %r13  # i++
 		jmp print_highscore_label_loop
 	end_print_highscore_label_loop:
+
+	jmp end_loop  # finished in-game loop
+
+	main_menu_loop:
+
+	# print title
+	leaq titleString, %r11
+	movq $0, %r12  # x = 0
+	movq $0, %r13  # y = 0
+	movq $0, %r14  # i = 0
+
+	print_title_string_loop:
+		mov $0, %rdx
+		movb (%r11, %r14, 1), %dl  # get char
+		
+		cmpb $0, %dl
+		je end_print_title_string_loop
+
+		cmp $0x20, %dl  # space
+		jne print_title_not_space
+
+			inc %r12  # x ++
+			inc %r14 # i ++
+			jmp print_title_string_loop
+
+		print_title_not_space:
+
+		cmpb $0x0A, %dl  # new line
+		jne print_title_not_new_line
+
+			inc %r13  # y ++
+			add $2, %r14  # i ++
+			movq $0, %r12  # x = 0
+			jmp print_title_string_loop
+
+		print_title_not_new_line:
+
+		movq %r12, %rdi
+		addq $30, %rdi  # get x
+
+		movq %r13, %rsi
+		addq $7, %rsi  # get y
+
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r14  # i++
+		inc %r12  # x++
+		jmp print_title_string_loop
+	end_print_title_string_loop:
+
+	# check for "S" input
+	call readKeyCode
+	cmp $31, %rax
+	jne end_input_start
+	input_start:
+		# clear the screen
+		movq $24, %r9  # y = 24
+		start_clear_row:
+			movq $79, %r8  # x = 79
+
+			start_clear_char:
+				movq %r8, %rdi  # pass x
+				movq %r9, %rsi  # pass y
+				movq $0, %rdx  # char
+				movq $0, %rcx  # colour
+
+				call putChar
+
+				decq %r8  # x--
+				jge start_clear_char
+			end_start_clear_char:
+
+			decq %r9  # y--
+			jge start_clear_row
+		end_start_clear_row:
+
+		movb $1, gameState
+		jmp end_loop
+	end_input_start:
+
+	end_loop:
 
 	ret
