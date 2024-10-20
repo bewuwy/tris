@@ -433,13 +433,13 @@ gameLoop:
 	movq $15, %r8  # i = 15 (row iterator)
 
 	print_loop:
-		movq $15, %r9  # j = 15
+		movq $9, %r9  # j = 15
 		movq $0, %r15
 		leaq tempBoard, %rcx
 		leaq colorBoard, %r11
 		movw (%rcx, %r8, 2), %r15w
 		movq (%r11, %r8, 8), %r11
-
+		shr $6, %r15
 		print_row_loop:
 			# print num at (i, j)
 			movq $0, %rdx  # clear rdx
@@ -485,6 +485,7 @@ gameLoop:
 			shr %r15  # shift board to get next bit
 			shr $4, %r11  # shift color board by 4 bits
 			dec %r9
+			//cmp $6, %r9
 			jge print_row_loop
 		end_print_row_loop:
 		dec %r8
