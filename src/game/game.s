@@ -344,8 +344,8 @@ gameLoop:
 
 				leaq colorBoard, %rcx
 				movq (%rcx,%r8,8), %r12
-				//not %rdx
-				//and %rdx, %r12
+				not %rdx
+				and %rdx, %r12
 				or %r13, %r12
 				movq %r12, (%rcx,%r8,8)
 
@@ -437,9 +437,10 @@ gameLoop:
 		movq $0, %r15
 		leaq tempBoard, %rcx
 		leaq colorBoard, %r11
-		movw (%rcx, %r8, 2), %r15w
-		movq (%r11, %r8, 8), %r11
+		movw (%rcx, %r8, 2), %r15w  #row to print
+		movq (%r11, %r8, 8), %r11  #colours to print
 		shr $6, %r15
+		shr $24, %r11
 		print_row_loop:
 			# print num at (i, j)
 			movq $0, %rdx  # clear rdx
