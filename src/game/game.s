@@ -34,7 +34,6 @@ score: .int 0
 initBoard: .skip 32
 currentBoard: .skip 32
 
-
 tempBoard: .skip 34 # go fuck yourself
 colorBoard: .skip 128
 
@@ -53,6 +52,8 @@ randomGen: .byte 0xa7
 gravityCounter: .byte 0
 
 .text
+
+scoreString: .asciz "SCORE:"
 
 .global gameInit
 .global gameLoop
@@ -433,7 +434,7 @@ gameLoop:
 	movq $15, %r8  # i = 15 (row iterator)
 
 	print_loop:
-		movq $15, %r9  # j = 15
+		movq $15, %r9  # j = 15 (column iterator)
 		movq $0, %r15
 		leaq tempBoard, %rcx
 		leaq colorBoard, %r11
@@ -484,6 +485,7 @@ gameLoop:
 			call putChar # print char
 			shr %r15  # shift board to get next bit
 			shr $4, %r11  # shift color board by 4 bits
+
 			dec %r9
 			jge print_row_loop
 		end_print_row_loop:
@@ -492,37 +494,25 @@ gameLoop:
 	end_print_loop:
 
 	# print "score:"
-	movq $1, %rsi  # y = 1
-	movq $15, %rcx  # color = white
+	movq $0, %r13  # i = 0
+	leaq scoreString, %r12
+	print_score_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_score_label_loop
 
-	movq $1, %rdi  # x = 1
-	movq $'S', %rdx
-	call putChar
+		movq %r13, %rdi
+		addq $1, %rdi  # get x
 
-	movq $2, %rdi  # x = 2
-	movq $1, %rsi  # y = 1
-	movq $'C', %rdx
-	call putChar
+		movq $1, %rsi  # y = 1
+		movq $15, %rcx  # color = white
 
-	movq $3, %rdi  # x = 3
-	movq $1, %rsi  # y = 1
-	movq $'O', %rdx
-	call putChar
+		call putChar  # print
 
-	movq $4, %rdi  # x = 4
-	movq $1, %rsi  # y = 1
-	movq $'R', %rdx
-	call putChar
-
-	movq $5, %rdi  # x = 5
-	movq $1, %rsi  # y = 1
-	movq $'E', %rdx
-	call putChar
-
-	movq $6, %rdi  # x = 6
-	movq $1, %rsi  # y = 1
-	movq $':', %rdx
-	call putChar
+		inc %r13  # i++
+		jmp print_score_label_loop
+	end_print_score_label_loop:
 
 	# print score value
 	movq score, %r8
