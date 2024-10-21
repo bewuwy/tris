@@ -37,7 +37,7 @@ highScore: .quad 0
 initBoard: .skip 32
 currentBoard: .skip 32
 
-tempBoard: .skip 34 # go fuck yourself
+tempBoard: .skip 32 # go fuck yourself
 colorBoard: .skip 128
 
 fallingBlock: .skip 32
@@ -48,12 +48,12 @@ gameState: .byte 0  # 0 - main menu, 1 - game, 2 - game over dialog, 3 - high sc
 r_wall: .quad 0x0040004000400040
 l_wall: .quad 0x8000800080008000
 
-pieces: .skip 112
+pieces: .skip 120
 
 randomGen: .byte 0xa7
 
 currPiece: .byte 0
-holdPiece: .byte 5
+holdPiece: .byte 14
 canSwap: .byte 1
 
 gravityCounter: .byte 0
@@ -112,6 +112,7 @@ gameInit:
 	movq $0x00c00100, 88(%r8)  # hbend bl
 	movq $0x00800300, 96(%r8)  # hbend tr
 	movq $0x010000c0, 104(%r8)  # hbend tl
+	movq $0xffc0, 112(%r8)
 
 	# init falling color
 	mov $9, fallingColor
@@ -437,19 +438,18 @@ gameLoop:
 
 	clear_line_tick:
 		movq $0, %r15
-		movq $0, %r8
+		movq $15, %r8
 		check_line_loop:
 			leaq currentBoard, %rcx
 			movw (%rcx, %r8, 2), %r14w
 			cmpw $0xFFC0, %r14w
 			jne line_not_full
 			line_full:
-				add $0x8000, %r15
+				add $0x10000, %r15
 			line_not_full:
 			shr %r15
-			inc %r8
-			cmp $15, %r8
-			jle check_line_loop
+			dec %r8
+			jge check_line_loop
 		end_check_line_loop:
 		movq $15, %r8
 		movq $0, %r9
@@ -464,6 +464,9 @@ gameLoop:
 			inc_offset:
 				inc %r9
 				movq %r9, score
+				dec %r8
+				jge shift_line_loop
+				jmp end_shift_line_loop
 			end_inc_offset:
 			leaq currentBoard, %rcx
 			movw (%rcx, %r8, 2), %r14w
