@@ -20,7 +20,6 @@ along with gamelib-x64. If not, see <http://www.gnu.org/licenses/>.
 /*
 TODO:
 	- score
-	- colors
 	- saving high score
 	- hire a SCRUM master
 */
@@ -59,6 +58,7 @@ gravityCounter: .byte 0
 
 scoreString: .asciz "SCORE:"
 highScoreString: .asciz "HIGHSCORE:"
+holdString: .asciz "HOLD"
 
 titleString: 
 .ascii " _______   _"
@@ -517,9 +517,12 @@ gameLoop:
 
 	# frame
 	# y = {4,20}, x = [31,42]
+	# y = {4,8}, x = [46, 53]
 
 	movq $31, %r8  # x
 	movq $4, %r9  # y
+	movq $42, %r11  # x stop
+	movq $0, %r10  # i = 0
 	print_frame_horizontal_loop:
 		movq $3, %rcx
 		movq $0, %rdx
@@ -530,22 +533,44 @@ gameLoop:
 		call putChar
 
 		inc %r8
-		cmpq $42, %r8
+		cmpq %r11, %r8
 		jle print_frame_horizontal_loop		
 	end_print_frame_horizontal_loop:
 
-	cmp $20, %r9
-	je end_horizontal_frame
+	inc %r10  # i++
 
-	movq $20, %r9
-	movq $31, %r8
-	jmp print_frame_horizontal_loop
+	cmp $1, %r10
+	jne end_horizontal_frame1
 
-	end_horizontal_frame:
+		movq $20, %r9
+		movq $31, %r8
+		jmp print_frame_horizontal_loop
+
+	end_horizontal_frame1:
+
+	cmp $2, %r10
+	jne end_horizontal_frame2
+
+		movq $4, %r9
+		movq $46, %r8
+		movq $53, %r11
+		jmp print_frame_horizontal_loop
+	end_horizontal_frame2:
+
+	cmp $3, %r10
+	jne end_horizontal_frame3
+
+		movq $8, %r9
+		movq $46, %r8
+		jmp print_frame_horizontal_loop
+	end_horizontal_frame3:
 
 	# x = {31,42}, y = [4,20]
+	# x = {46,53}, y = [4,8]
 	movq $31, %r8  # x
 	movq $4, %r9  # y
+	movq $0, %r10  # i = 0
+	movq $20, %r11 # y stop
 	print_frame_vertical_loop:
 		movq $3, %rcx
 		movq $0, %rdx
@@ -556,18 +581,36 @@ gameLoop:
 		call putChar
 
 		inc %r9
-		cmpq $20, %r9
+		cmpq %r11, %r9
 		jle print_frame_vertical_loop		
 	end_print_frame_vertical_loop:
 
-	cmp $42, %r8
-	je end_vertical_frame
+	inc %r10
 
-	movq $42, %r8
-	movq $4, %r9
-	jmp print_frame_vertical_loop
+	cmp $1, %r10
+	jne end_vertical_frame1
 
-	end_vertical_frame:
+		movq $42, %r8
+		movq $4, %r9
+		jmp print_frame_vertical_loop
+	end_vertical_frame1:
+
+	cmp $2, %r10
+	jne end_vertical_frame2
+
+		movq $46, %r8
+		movq $4, %r9
+		movq $8, %r11
+		jmp print_frame_vertical_loop
+	end_vertical_frame2:
+
+	cmp $3, %r10
+	jne end_vertical_frame3
+
+		movq $53, %r8
+		movq $4, %r9
+		jmp print_frame_vertical_loop
+	end_vertical_frame3:
 
 	# print "score:"
 	movq $0, %r13  # i = 0
@@ -589,6 +632,27 @@ gameLoop:
 		inc %r13  # i++
 		jmp print_score_label_loop
 	end_print_score_label_loop:
+
+	# print "hold" label
+	movq $0, %r13  # i = 0
+	leaq holdString, %r12
+	print_hold_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_hold_label_loop
+
+		movq %r13, %rdi
+		addq $48, %rdi  # get x
+
+		movq $9, %rsi  # y = 1
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_hold_label_loop
+	end_print_hold_label_loop:
 
 	# print score value
 	movq score, %r8
