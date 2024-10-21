@@ -50,6 +50,10 @@ pieces: .skip 112
 
 randomGen: .byte 0xa7
 
+currPiece: .byte 0
+holdPiece: .byte 5
+canSwap: .byte 1
+
 gravityCounter: .byte 0
 
 .text
@@ -149,9 +153,9 @@ gameLoop:
 		movq $14, %rcx
 		div %rcx
 		movq %rdx, %r9
-
 		leaq pieces, %rcx
 		movq (%rcx, %r9, 8), %r8
+		movb %r9b, currPiece
 		movq currentBoard, %r15
 		and %r8, %r15
 		jnz input_restart
@@ -161,6 +165,32 @@ gameLoop:
 	# check for user input
 	call readKeyCode
 
+
+	# check for "C" input (??)
+	cmp $46, %rax
+	jne end_input_hold
+	input_hold:
+		movq $0, %r8
+		movb canSwap, %r8b
+		cmp $0, %r8
+		je end_input_hold
+		mov $3, %r8	
+		clean_falling_board_loop:
+			leaq fallingBlock, %rcx
+			movq $0, (%rcx, %r8, 8)
+			dec %r8
+			jge clean_falling_board_loop
+		end_clean_falling_board_loop:
+		mov $0, %r9
+		movb holdPiece, %r9b
+		leaq pieces, %rcx
+		movq (%rcx, %r9, 8), %r8
+		movq %r8, fallingBlock
+		movb currPiece, %cl
+		movb %cl, holdPiece
+		movb %r9b, currPiece
+		
+	end_input_hold:
 	# check for "A" input (30)
 	cmp $30, %rax
 	jne end_input_left
