@@ -53,7 +53,7 @@ pieces: .skip 112
 randomGen: .byte 0xa7
 
 currPiece: .byte 0
-holdPiece: .byte 5
+holdPiece: .byte 5  # straight vert for debugging
 canSwap: .byte 1
 
 gravityCounter: .byte 0
@@ -205,6 +205,7 @@ gameLoop:
 		movb canSwap, %r8b
 		cmp $0, %r8
 		je end_input_hold
+		movb $0, canSwap
 		mov $3, %r8	
 		clean_falling_board_loop:
 			leaq fallingBlock, %rcx
@@ -377,6 +378,7 @@ gameLoop:
 
 		jmp end_put_block
 		put_block:
+			mov $1, canSwap
 			mov $15, %r8
 			put_block_loop:
 				leaq fallingBlock, %rcx
@@ -563,6 +565,59 @@ gameLoop:
 		dec %r8
 		jge print_loop
 	end_print_loop:
+
+	# print the held piece
+	movq $4, %r8  # i = 4 (row iterator)
+	
+	print_hold_loop:
+		movq $5, %r9  # j = 4
+		movq $0, %r15
+		leaq pieces, %rcx
+		movq $0, %r10
+		movb holdPiece, %r10b
+		leaq (%rcx, %r10, 8), %rcx
+		movw (%rcx, %r8, 2), %r15w  # row to print
+		shr $6, %r15
+		print_hold_row_loop:
+			# print num at (i, j)
+			movq $0, %rdx  # clear rdx
+			movq %r15, %rax
+
+			movq $2, %rcx
+			divq %rcx  # divide board by 2
+			cmpq $0, %rdx  # rdx = modulo of 2
+			jne h_print1  # if not divisible by 2, print 1
+			h_print0:
+				mov $0, %rcx
+				movb $7, %dl
+				//shl $4, %cl
+				or %dl, %cl
+				movb $'|', %dl  # | char
+				jmp end_print_hold_iter
+			h_print1:
+				movq $1, %rcx  # hard coded colour
+				movb %cl, %dl
+				shl $4, %cl
+				or %dl, %cl
+
+				movb $'H', %dl  # B char
+				// shr $4, %cl
+			end_print_hold_iter:
+			movq %r9, %rdi  # x = j
+			add $47, %rdi  # horizontal padding
+			movq %r8, %rsi  # y = i
+			add $4, %rsi  # vertical padding
+			call putChar # print char
+			shr %r15  # shift board to get next bit
+			shr $4, %r11  # shift color board by 4 bits
+
+			dec %r9
+			//cmp $6, %r9
+			jge print_hold_row_loop
+		end_print_hold_row_loop:
+		dec %r8
+		jge print_hold_loop
+	end_print_hold_loop:
 
 	# frame
 	# y = {4,20}, x = [31,42]
