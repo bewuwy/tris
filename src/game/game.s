@@ -36,8 +36,9 @@ highScore: .quad 0
 
 initBoard: .skip 32
 currentBoard: .skip 32
-
+.word 0
 tempBoard: .skip 32 # go fuck yourself
+.quad 0
 colorBoard: .skip 128
 
 fallingBlock: .skip 32
