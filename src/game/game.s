@@ -20,20 +20,22 @@ along with gamelib-x64. If not, see <http://www.gnu.org/licenses/>.
 /*
 TODO:
 	- score
-	- colors
 	- saving high score
 	- hire a SCRUM master
 */
 
 .file "src/game/game.s"
 
-.data
+.global gameInit
+.global gameLoop
 
-score: .int 0
+.section .game.data
+
+score: .quad 0
+highScore: .quad 0
 
 initBoard: .skip 32
 currentBoard: .skip 32
-
 
 tempBoard: .skip 34 # go fuck yourself
 colorBoard: .skip 128
@@ -41,7 +43,7 @@ colorBoard: .skip 128
 fallingBlock: .skip 32
 fallingColor: .skip 4
 
-currentMode: .byte 0
+gameState: .byte 0  # 0 - main menu, 1 - game, 2 - game over dialog, 3 - high score input
 
 r_wall: .quad 0x0040004000400040
 l_wall: .quad 0x8000800080008000
@@ -56,14 +58,33 @@ canSwap: .byte 1
 
 gravityCounter: .byte 0
 
-.text
-
-.global gameInit
-.global gameLoop
-
-.section .game.data
-
 .section .game.text
+
+scoreString: .asciz "SCORE:"
+highScoreString: .asciz "HIGHSCORE:"
+holdString: .asciz "HOLD"
+gameOverString: .asciz "--- Game over! ---"
+restartInputString: .asciz "press R to play again"
+
+titleString: 
+.ascii " _______   _"
+.word 0x0A  # new line
+.ascii "|__   __| (_)"
+.word 0x0A  # new line
+.ascii "   | |_ __ _ ___ "
+.word 0x0A  # new line
+.ascii "   | | '__| / __|"
+.word 0x0A  # new line
+.ascii "   | | |  | \__ \\"
+.word 0x0A  # new line
+.ascii "   |_|_|  |_|___/"
+.word 0x0A  # new line
+.word 0x0A  # new line
+.ascii "---- the game ----"
+.word 0x0A  # new line
+.word 0x0A  # new line
+.ascii " press S to start"
+.byte 0x00
 
 gameInit:
 
@@ -93,10 +114,9 @@ gameInit:
 	movq $0x010000c0, 104(%r8)  # hbend tl
 
 	# init falling color
-	mov $9, fallingColor  # 0xA
+	mov $9, fallingColor
 
 	# clear the screen
-
 	movq $24, %r9  # y = 24
 	clear_row:
 		movq $79, %r8  # x = 79
@@ -125,6 +145,14 @@ gameInit:
 
 gameLoop:
 
+	movb gameState, %r8b
+
+	cmpb $0, %r8b
+	je main_menu_loop
+
+	cmpb $2, %r8b
+	je game_over_loop
+
 	# update random gen
 	mov randomGen, %r8b
 	mov %r8b, %r9b
@@ -147,7 +175,6 @@ gameLoop:
 	end_checkfalling_piece_loop:
 
 	spawn_piece:
-	
 		movq randomGen, %rax
 		movq $0, %rdx
 		movq $14, %rcx
@@ -158,7 +185,11 @@ gameLoop:
 		movb %r9b, currPiece
 		movq currentBoard, %r15
 		and %r8, %r15
-		jnz input_restart
+		jz no_player_death
+		player_death:  # player dies - no place to spawn
+			movb $2, gameState
+			jmp input_restart
+		no_player_death:
 		movq %r8, fallingBlock
 	end_spawn_piece:
 
@@ -269,7 +300,16 @@ gameLoop:
 	cmp $19, %rax
 	jne end_input_restart
 	input_restart:
-		mov $3, %r8
+		# update high score if needed
+		movq score, %r8
+		movq highScore, %r9
+
+		cmpq %r9, %r8
+		jle end_update_highscore # score <= highScore, skip
+			movq %r8, highScore  # high score = score
+		end_update_highscore:
+
+		movq $3, %r8
 		movb $0, gravityCounter
 		movq $0, score
 		restart_loop:
@@ -509,12 +549,13 @@ gameLoop:
 				// shr $4, %cl
 			end_print_iter:
 			movq %r9, %rdi  # x = j
-			add $20, %rdi
+			add $32, %rdi  # horizontal padding
 			movq %r8, %rsi  # y = i
-			add $6, %rsi
+			add $4, %rsi  # vertical padding
 			call putChar # print char
 			shr %r15  # shift board to get next bit
 			shr $4, %r11  # shift color board by 4 bits
+
 			dec %r9
 			//cmp $6, %r9
 			jge print_row_loop
@@ -523,117 +564,389 @@ gameLoop:
 		jge print_loop
 	end_print_loop:
 
-	# print "score:"
-	movq $1, %rsi  # y = 1
-	movq $15, %rcx  # color = white
+	# frame
+	# y = {4,20}, x = [31,42]
+	# y = {4,8}, x = [46, 53]
 
-	movq $1, %rdi  # x = 1
-	movq $'S', %rdx
-	call putChar
+	movq $31, %r8  # x
+	movq $4, %r9  # y
+	movq $42, %r11  # x stop
+	movq $0, %r10  # i = 0
+	print_frame_horizontal_loop:
+		movq $3, %rcx
+		movq $0, %rdx
+		movb $'=', %dl
 
-	movq $2, %rdi  # x = 2
-	movq $1, %rsi  # y = 1
-	movq $'C', %rdx
-	call putChar
+		mov %r8, %rdi
+		mov %r9, %rsi
+		call putChar
 
-	movq $3, %rdi  # x = 3
-	movq $1, %rsi  # y = 1
-	movq $'O', %rdx
-	call putChar
+		inc %r8
+		cmpq %r11, %r8
+		jle print_frame_horizontal_loop		
+	end_print_frame_horizontal_loop:
 
-	movq $4, %rdi  # x = 4
-	movq $1, %rsi  # y = 1
-	movq $'R', %rdx
-	call putChar
+	inc %r10  # i++
 
-	movq $5, %rdi  # x = 5
-	movq $1, %rsi  # y = 1
-	movq $'E', %rdx
-	call putChar
+	cmp $1, %r10
+	jne end_horizontal_frame1
 
-	movq $6, %rdi  # x = 6
-	movq $1, %rsi  # y = 1
-	movq $':', %rdx
-	call putChar
+		movq $20, %r9
+		movq $31, %r8
+		jmp print_frame_horizontal_loop
+
+	end_horizontal_frame1:
+
+	cmp $2, %r10
+	jne end_horizontal_frame2
+
+		movq $4, %r9
+		movq $46, %r8
+		movq $53, %r11
+		jmp print_frame_horizontal_loop
+	end_horizontal_frame2:
+
+	cmp $3, %r10
+	jne end_horizontal_frame3
+
+		movq $8, %r9
+		movq $46, %r8
+		jmp print_frame_horizontal_loop
+	end_horizontal_frame3:
+
+	# x = {31,42}, y = [4,20]
+	# x = {46,53}, y = [4,8]
+	movq $31, %r8  # x
+	movq $4, %r9  # y
+	movq $0, %r10  # i = 0
+	movq $20, %r11 # y stop
+	print_frame_vertical_loop:
+		movq $3, %rcx
+		movq $0, %rdx
+		movb $'!', %dl
+
+		mov %r8, %rdi
+		mov %r9, %rsi
+		call putChar
+
+		inc %r9
+		cmpq %r11, %r9
+		jle print_frame_vertical_loop		
+	end_print_frame_vertical_loop:
+
+	inc %r10
+
+	cmp $1, %r10
+	jne end_vertical_frame1
+
+		movq $42, %r8
+		movq $4, %r9
+		jmp print_frame_vertical_loop
+	end_vertical_frame1:
+
+	cmp $2, %r10
+	jne end_vertical_frame2
+
+		movq $46, %r8
+		movq $4, %r9
+		movq $8, %r11
+		jmp print_frame_vertical_loop
+	end_vertical_frame2:
+
+	cmp $3, %r10
+	jne end_vertical_frame3
+
+		movq $53, %r8
+		movq $4, %r9
+		jmp print_frame_vertical_loop
+	end_vertical_frame3:
+
+	# print "score:" at (13, 5)
+	movq $0, %r13  # i = 0
+	leaq scoreString, %r12
+	print_score_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_score_label_loop
+
+		movq %r13, %rdi
+		addq $13, %rdi  # get x
+
+		movq $5, %rsi  # y = 1
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_score_label_loop
+	end_print_score_label_loop:
+
+	# print "hold" label
+	movq $0, %r13  # i = 0
+	leaq holdString, %r12
+	print_hold_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_hold_label_loop
+
+		movq %r13, %rdi
+		addq $48, %rdi  # get x
+
+		movq $9, %rsi  # y = 1
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_hold_label_loop
+	end_print_hold_label_loop:
 
 	# print score value
 	movq score, %r8
+	movq $13, %r9  # i = 13
 
-	movq %r8, %rax  # div by 10 to get last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert last digit to ASCII
-	movq %rax, %r8
+	print_score_loop:
+		movq %r8, %rax  # div by 10 to get last digit
+		movq $10, %rcx
+		movq $0, %rdx
+		div %rcx  # last digit is in rdx
+		addq $48, %rdx  # convert last digit to ASCII
+		movq %rax, %r8
 
-	movq $13, %rdi  # x = 13
-	movq $1, %rsi  # y = 1
-	call putChar
+		movq %r9, %rdi  # x = i
+		addq $12, %rdi
+		movq $5, %rsi  # y = 1
+		call putChar
 
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
+		dec %r9
+		cmp $8, %r9
+		jge print_score_loop
+	end_print_score_loop:
 
-	movq $12, %rdi  # x = 12
-	movq $1, %rsi  # y = 1
-	call putChar
+	# print high score value
+	movq highScore, %r8
+	movq $13, %r9  # i = 13
 
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
+	print_highscore_loop:
+		movq %r8, %rax  # div by 10 to get last digit
+		movq $10, %rcx
+		movq $0, %rdx
+		div %rcx  # last digit is in rdx
+		addq $48, %rdx  # convert last digit to ASCII
+		movq %rax, %r8
 
-	movq $11, %rdi  # x = 11
-	movq $1, %rsi  # y = 1
-	call putChar
+		movq %r9, %rdi  # x = i
+		addq $12, %rdi
+		movq $7, %rsi  # y = 1
+		call putChar
 
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
-
-	movq $10, %rdi  # x = 10
-	movq $1, %rsi  # y = 1
-	call putChar
-
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
-
-	movq $9, %rdi  # x = 9
-	movq $1, %rsi  # y = 1
-	call putChar
-
-	movq %r8, %rax  # div by 10 to get 2nd last digit
-	movq $10, %rcx
-	movq $0, %rdx
-	div %rcx  # last digit is in rdx
-	addq $48, %rdx  # convert digit to ASCII
-	movq %rax, %r8
-
-	movq $8, %rdi  # x = 8
-	movq $1, %rsi  # y = 1
-	call putChar
+		dec %r9
+		cmp $8, %r9
+		jge print_highscore_loop
+	end_print_highscore_loop:
 
 	# add leading 0s
 	movq $'0', %rdx
 
-	movq $14, %rdi  # x = 14
-	movq $1, %rsi  # y = 1
+	movq $26, %rdi  # x = 26
+	movq $5, %rsi  # y = 5
 	call putChar
 
-	movq $15, %rdi  # x = 15
-	movq $1, %rsi  # y = 1
+	movq $26, %rdi  # x = 26
+	movq $7, %rsi
 	call putChar
+
+	movq $27, %rdi  # x = 27
+	movq $5, %rsi  # y = 5
+	call putChar
+
+	movq $27, %rdi  # x = 27
+	movq $7, %rsi
+	call putChar
+
+	# print high score
+	movq $0, %r13  # i = 0
+	leaq highScoreString, %r12
+	print_highscore_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_highscore_label_loop
+
+		movq %r13, %rdi
+		addq $9, %rdi  # get x
+
+		movq $7, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_highscore_label_loop
+	end_print_highscore_label_loop:
+
+	jmp end_loop  # finished in-game loop
+
+	main_menu_loop:
+
+	# print title
+	leaq titleString, %r11
+	movq $0, %r12  # x = 0
+	movq $0, %r13  # y = 0
+	movq $0, %r14  # i = 0
+
+	print_title_string_loop:
+		mov $0, %rdx
+		movb (%r11, %r14, 1), %dl  # get char
+		
+		cmpb $0, %dl
+		je end_print_title_string_loop
+
+		cmp $0x20, %dl  # space
+		jne print_title_not_space
+
+			inc %r12  # x ++
+			inc %r14 # i ++
+			jmp print_title_string_loop
+
+		print_title_not_space:
+
+		cmpb $0x0A, %dl  # new line
+		jne print_title_not_new_line
+
+			inc %r13  # y ++
+			add $2, %r14  # i ++
+			movq $0, %r12  # x = 0
+			jmp print_title_string_loop
+
+		print_title_not_new_line:
+
+		movq %r12, %rdi
+		addq $30, %rdi  # get x
+
+		movq %r13, %rsi
+		addq $7, %rsi  # get y
+
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r14  # i++
+		inc %r12  # x++
+		jmp print_title_string_loop
+	end_print_title_string_loop:
+
+	# check for "S" input
+	call readKeyCode
+	cmp $31, %rax
+	jne end_input_start
+	input_start:
+		# clear the screen
+		movq $24, %r9  # y = 24
+		start_clear_row:
+			movq $79, %r8  # x = 79
+
+			start_clear_char:
+				movq %r8, %rdi  # pass x
+				movq %r9, %rsi  # pass y
+				movq $0, %rdx  # char
+				movq $0, %rcx  # colour
+
+				call putChar
+
+				decq %r8  # x--
+				jge start_clear_char
+			end_start_clear_char:
+
+			decq %r9  # y--
+			jge start_clear_row
+		end_start_clear_row:
+
+		movb $1, gameState
+		jmp end_loop
+	end_input_start:
+
+	jmp end_loop  # end of main menu loop
+
+	game_over_loop:
+
+	# print game over label
+	movq $0, %r13  # i = 0
+	leaq gameOverString, %r12
+	print_gameover_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_gameover_label_loop
+
+		movq %r13, %rdi
+		addq $28, %rdi  # get x
+
+		movq $22, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_gameover_label_loop
+	end_print_gameover_label_loop:
+
+	# print restart input label
+	movq $0, %r13  # i = 0
+	leaq restartInputString, %r12
+	print_restart_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_restart_label_loop
+
+		movq %r13, %rdi
+		addq $26, %rdi  # get x
+
+		movq $23, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_restart_label_loop
+	end_print_restart_label_loop:
+
+	# check for "R" input
+	call readKeyCode
+	cmp $19, %rax
+	jne end_input_restart_gameover
+		# clear the bottom of the screen
+		movq $24, %r9  # y = 24
+		restart_clear_row:
+			movq $79, %r8  # x = 79
+
+			restart_clear_char:
+				movq %r8, %rdi  # pass x
+				movq %r9, %rsi  # pass y
+				movq $0, %rdx  # char
+				movq $0, %rcx  # colour
+
+				call putChar
+
+				decq %r8  # x--
+				jge restart_clear_char
+			end_restart_clear_char:
+
+			decq %r9  # y--
+			cmpq $20, %r9
+			jge restart_clear_row
+		end_restart_clear_row:
+
+		# set game state to main game
+		movb $1, gameState
+		jmp input_restart
+	end_input_restart_gameover:
+
+	jmp end_loop  # end of game over loop
+
+	end_loop:
 
 	ret
