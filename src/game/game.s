@@ -31,8 +31,8 @@ TODO:
 
 .section .game.data
 
-
-score: .int 0
+score: .quad 0
+highScore: .quad 0
 
 initBoard: .skip 32
 currentBoard: .skip 32
@@ -175,7 +175,7 @@ gameLoop:
 		movq (%rcx, %r9, 8), %r8
 		movq currentBoard, %r15
 		and %r8, %r15
-		jnz input_restart
+		jnz input_restart  # player dies - no place to spawn
 		movq %r8, fallingBlock
 	end_spawn_piece:
 
@@ -260,7 +260,16 @@ gameLoop:
 	cmp $19, %rax
 	jne end_input_restart
 	input_restart:
-		mov $3, %r8
+		# update high score if needed
+		movq score, %r8
+		movq highScore, %r9
+
+		cmpq %r9, %r8
+		jle end_update_highscore # score <= highScore, skip
+			movq %r8, highScore  # high score = score
+		end_update_highscore:
+
+		movq $3, %r8
 		movb $0, gravityCounter
 		movq $0, score
 		restart_loop:
@@ -612,7 +621,7 @@ gameLoop:
 		jmp print_frame_vertical_loop
 	end_vertical_frame3:
 
-	# print "score:"
+	# print "score:" at (13, 5)
 	movq $0, %r13  # i = 0
 	leaq scoreString, %r12
 	print_score_label_loop:
@@ -622,9 +631,9 @@ gameLoop:
 		je end_print_score_label_loop
 
 		movq %r13, %rdi
-		addq $1, %rdi  # get x
+		addq $13, %rdi  # get x
 
-		movq $1, %rsi  # y = 1
+		movq $5, %rsi  # y = 1
 		movq $15, %rcx  # color = white
 
 		call putChar  # print
@@ -667,7 +676,8 @@ gameLoop:
 		movq %rax, %r8
 
 		movq %r9, %rdi  # x = i
-		movq $1, %rsi  # y = 1
+		addq $12, %rdi
+		movq $5, %rsi  # y = 1
 		call putChar
 
 		dec %r9
@@ -675,15 +685,45 @@ gameLoop:
 		jge print_score_loop
 	end_print_score_loop:
 
+	# print high score value
+	movq highScore, %r8
+	movq $13, %r9  # i = 13
+
+	print_highscore_loop:
+		movq %r8, %rax  # div by 10 to get last digit
+		movq $10, %rcx
+		movq $0, %rdx
+		div %rcx  # last digit is in rdx
+		addq $48, %rdx  # convert last digit to ASCII
+		movq %rax, %r8
+
+		movq %r9, %rdi  # x = i
+		addq $12, %rdi
+		movq $7, %rsi  # y = 1
+		call putChar
+
+		dec %r9
+		cmp $8, %r9
+		jge print_highscore_loop
+	end_print_highscore_loop:
+
 	# add leading 0s
 	movq $'0', %rdx
 
-	movq $14, %rdi  # x = 14
-	movq $1, %rsi  # y = 1
+	movq $26, %rdi  # x = 26
+	movq $5, %rsi  # y = 5
 	call putChar
 
-	movq $15, %rdi  # x = 15
-	movq $1, %rsi  # y = 1
+	movq $26, %rdi  # x = 26
+	movq $7, %rsi
+	call putChar
+
+	movq $27, %rdi  # x = 27
+	movq $5, %rsi  # y = 5
+	call putChar
+
+	movq $27, %rdi  # x = 27
+	movq $7, %rsi
 	call putChar
 
 	# print high score
@@ -696,9 +736,9 @@ gameLoop:
 		je end_print_highscore_label_loop
 
 		movq %r13, %rdi
-		addq $1, %rdi  # get x
+		addq $9, %rdi  # get x
 
-		movq $3, %rsi  # y = 3
+		movq $7, %rsi  # y = 3
 		movq $15, %rcx  # color = white
 
 		call putChar  # print
