@@ -59,6 +59,8 @@ gravityCounter: .byte 0
 scoreString: .asciz "SCORE:"
 highScoreString: .asciz "HIGHSCORE:"
 holdString: .asciz "HOLD"
+gameOverString: .asciz "--- Game over! ---"
+restartInputString: .asciz "press R to play again"
 
 titleString: 
 .ascii " _______   _"
@@ -140,8 +142,12 @@ gameInit:
 gameLoop:
 
 	movb gameState, %r8b
+
 	cmpb $0, %r8b
 	je main_menu_loop
+
+	cmpb $2, %r8b
+	je game_over_loop
 
 	# update random gen
 	mov randomGen, %r8b
@@ -175,7 +181,11 @@ gameLoop:
 		movq (%rcx, %r9, 8), %r8
 		movq currentBoard, %r15
 		and %r8, %r15
-		jnz input_restart  # player dies - no place to spawn
+		jz no_player_death
+		player_death:  # player dies - no place to spawn
+			movb $2, gameState
+			jmp input_restart
+		no_player_death:
 		movq %r8, fallingBlock
 	end_spawn_piece:
 
@@ -827,6 +837,85 @@ gameLoop:
 		movb $1, gameState
 		jmp end_loop
 	end_input_start:
+
+	jmp end_loop  # end of main menu loop
+
+	game_over_loop:
+
+	# print game over label
+	movq $0, %r13  # i = 0
+	leaq gameOverString, %r12
+	print_gameover_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_gameover_label_loop
+
+		movq %r13, %rdi
+		addq $28, %rdi  # get x
+
+		movq $22, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_gameover_label_loop
+	end_print_gameover_label_loop:
+
+	# print restart input label
+	movq $0, %r13  # i = 0
+	leaq restartInputString, %r12
+	print_restart_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_restart_label_loop
+
+		movq %r13, %rdi
+		addq $26, %rdi  # get x
+
+		movq $23, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_restart_label_loop
+	end_print_restart_label_loop:
+
+	# check for "R" input
+	call readKeyCode
+	cmp $19, %rax
+	jne end_input_restart_gameover
+		# clear the bottom of the screen
+		movq $24, %r9  # y = 24
+		restart_clear_row:
+			movq $79, %r8  # x = 79
+
+			restart_clear_char:
+				movq %r8, %rdi  # pass x
+				movq %r9, %rsi  # pass y
+				movq $0, %rdx  # char
+				movq $0, %rcx  # colour
+
+				call putChar
+
+				decq %r8  # x--
+				jge restart_clear_char
+			end_restart_clear_char:
+
+			decq %r9  # y--
+			cmpq $20, %r9
+			jge restart_clear_row
+		end_restart_clear_row:
+
+		# set game state to main game
+		movb $1, gameState
+		jmp input_restart
+	end_input_restart_gameover:
+
+	jmp end_loop  # end of game over loop
 
 	end_loop:
 
