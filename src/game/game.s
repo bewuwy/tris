@@ -40,7 +40,9 @@ currentBoard: .skip 32
 tempBoard: .skip 32 # go fuck yourself
 .quad 0
 colorBoard: .skip 128
-
+.quad 0
+tmpColour: .skip 128
+.quad 0
 fallingBlock: .skip 32
 fallingColor: .skip 4
 
@@ -475,15 +477,25 @@ gameLoop:
 			addq %r9, %r11
 			leaq tempBoard, %rcx
 			movw %r14w, (%rcx, %r11, 2)
+			leaq colorBoard, %rcx
+			movq (%rcx, %r8, 8), %r14
+			movq %r8, %r11
+			addq %r9, %r11
+			leaq tmpColour, %rcx
+			movq %r14, (%rcx, %r11, 8)
 			dec %r8
 			jge shift_line_loop
 		end_shift_line_loop:
-		movq $3, %r8
+		movq $15, %r8
 		save_line_clear_loop:
 			leaq tempBoard, %rcx  # load temp board address
-			movq (%rcx, %r8, 8), %r14  # load 4 rows of falling piece array
+			movw (%rcx, %r8, 2), %r14w  # load 1 rows of falling piece array
 			leaq currentBoard, %rcx  # load falling block address
-			movq %r14, (%rcx, %r8, 8)  # load 4 rows of falling piece array
+			movw %r14w, (%rcx, %r8, 2)  # load 1 rows of falling piece array
+			leaq tmpColour, %rcx  # load temp board address
+			movq (%rcx, %r8, 8), %r14  # load 1 rows of colour
+			leaq colorBoard, %rcx  # load falling block address
+			movq %r14, (%rcx, %r8, 8)  # load 1 rows of fcolur piece array
 			dec %r8  # i--
 			jge save_line_clear_loop
 		end_save_line_clear_loop:
