@@ -32,7 +32,16 @@ TODO:
 .section .game.data
 
 score: .quad 0
-highScore: .quad 0
+
+scoreboard:
+.quad 0
+.quad 0
+.quad 0
+
+scoreboardNames:
+.asciz "ABC"
+.asciz "DEF"
+.asciz "GHI"
 
 initBoard: .skip 32
 currentBoard: .skip 32
@@ -64,7 +73,7 @@ gravityCounter: .byte 0
 .section .game.text
 
 scoreString: .asciz "SCORE:"
-highScoreString: .asciz "HIGHSCORE:"
+scoreboardString: .asciz "-- SCOREBOARD --"
 holdString: .asciz "HOLD"
 gameOverString: .asciz "--- Game over! ---"
 restartInputString: .asciz "press R to play again"
@@ -305,14 +314,48 @@ gameLoop:
 	cmp $19, %rax
 	jne end_input_restart
 	input_restart:
-		# update high score if needed
+		# update high score leaderboard if needed
 		movq score, %r8
-		movq highScore, %r9
+		leaq scoreboard, %r10
+
+		# check 1st place in leaderboard
+		movq (%r10), %r9
 
 		cmpq %r9, %r8
-		jle end_update_highscore # score <= highScore, skip
-			movq %r8, highScore  # high score = score
-		end_update_highscore:
+		jle end_update_1stplace # score <= highScore, skip
+			# 3rd place = old 2nd place
+			movq 8(%r10), %r12
+			movq %r12, 16(%r10)			
+			# 2nd place = old 1st place
+			movq %r9, 8(%r10)
+			# 1st place = score
+			movq %r8, (%r10)
+			jmp end_update_scoreboard
+		end_update_1stplace:
+
+		# check 2nd place
+		movq 8(%r10), %r9
+
+		cmpq %r9, %r8
+		jle end_update_2ndplace
+			# 3rd place = old 2nd place
+			movq %r9, 16(%r10)
+			# 2nd place = score
+			movq %r8, 8(%r10)
+			jmp end_update_scoreboard
+		end_update_2ndplace:
+
+		# check 3rd place
+		movq 16(%r10), %r9
+
+		cmpq %r9, %r8
+		jle end_update_3rdplace
+			# 3rd place = score
+			movq %r8, 16(%r10)
+			jmp end_update_scoreboard
+		end_update_3rdplace:
+
+		end_update_scoreboard:
 
 		movq $3, %r8
 		movb $0, gravityCounter
@@ -796,50 +839,105 @@ gameLoop:
 		jge print_score_loop
 	end_print_score_loop:
 
-	# print high score value
-	movq highScore, %r8
-	movq $13, %r9  # i = 13
+	# print scorerboard values
+	leaq scoreboard, %r10
+	movq $2, %r11  # j = 2
 
-	print_highscore_loop:
-		movq %r8, %rax  # div by 10 to get last digit
-		movq $10, %rcx
-		movq $0, %rdx
-		div %rcx  # last digit is in rdx
-		addq $48, %rdx  # convert last digit to ASCII
-		movq %rax, %r8
+	leaderboard_values_print_loop:
+		movq (%r10, %r11, 8), %r8
+		movq $13, %r9  # i = 13
 
-		movq %r9, %rdi  # x = i
-		addq $12, %rdi
-		movq $7, %rsi  # y = 1
+		print_highscore_loop:
+			movq %r8, %rax  # div by 10 to get last digit
+			movq $10, %rcx
+			movq $0, %rdx
+			div %rcx  # last digit is in rdx
+			addq $48, %rdx  # convert last digit to ASCII
+			movq %rax, %r8
+
+			movq %r9, %rdi  # x = i
+			addq $12, %rdi
+			movq $9, %rsi  # y = 1
+			addq %r11, %rsi
+			addq %r11, %rsi
+			call putChar
+
+			dec %r9
+			cmp $8, %r9
+			jge print_highscore_loop
+		end_print_highscore_loop:
+
+		movq $26, %rdi  # x = 26
+		movq $9, %rsi
+		addq %r11, %rsi
+		addq %r11, %rsi	
 		call putChar
 
-		dec %r9
-		cmp $8, %r9
-		jge print_highscore_loop
-	end_print_highscore_loop:
+		movq $27, %rdi  # x = 27
+		movq $9, %rsi
+		addq %r11, %rsi
+		addq %r11, %rsi	
+		call putChar
+
+		dec %r11
+		jge leaderboard_values_print_loop
+	end_leaderboard_values_print_loop:
+
+	movq $2, %r8  # i = 2
+	leaq scoreboardNames, %r10
+	print_leaderboard_names_loop:
+		movq $2, %r9  # j = 2
+
+		print_name_char_loop:
+			leaq (%r10, %r8, 4), %r11
+
+			movq $0, %rdx
+			movb (%r11, %r9), %dl
+
+			movq %r9, %rdi  # x = i
+			addq $14, %rdi
+			movq $9, %rsi  # y = 1
+			addq %r8, %rsi
+			addq %r8, %rsi
+
+			movq $15, %rcx
+
+			call putChar
+
+			dec %r9
+			jge print_name_char_loop
+		end_print_name_char_loop:
+
+		# add the ":" character
+
+		movq $17, %rdi
+		movq $9, %rsi
+		addq %r8, %rsi
+		addq %r8, %rsi
+
+		movb $':', %dl
+
+		call putChar
+
+		dec %r8
+		jge print_leaderboard_names_loop
+	end_print_leaderboard_names_loop:
 
 	# add leading 0s
+	movq $10, %rcx
 	movq $'0', %rdx
 
 	movq $26, %rdi  # x = 26
 	movq $5, %rsi  # y = 5
 	call putChar
 
-	movq $26, %rdi  # x = 26
-	movq $7, %rsi
-	call putChar
-
 	movq $27, %rdi  # x = 27
 	movq $5, %rsi  # y = 5
 	call putChar
 
-	movq $27, %rdi  # x = 27
-	movq $7, %rsi
-	call putChar
-
-	# print high score
+	# print "scoreboard"
 	movq $0, %r13  # i = 0
-	leaq highScoreString, %r12
+	leaq scoreboardString, %r12
 	print_highscore_label_loop:
 		mov $0, %rdx
 		movb (%r12, %r13, 1), %dl  # get char
@@ -847,7 +945,7 @@ gameLoop:
 		je end_print_highscore_label_loop
 
 		movq %r13, %rdi
-		addq $9, %rdi  # get x
+		addq $13, %rdi  # get x
 
 		movq $7, %rsi  # y = 3
 		movq $15, %rcx  # color = white
