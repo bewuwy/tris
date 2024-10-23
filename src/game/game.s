@@ -102,28 +102,28 @@ gameInit:
 
 	# init pieces in memory
 	leaq pieces, %r8
-	movq $0x00800180, (%r8)  # br corner
-	movq $0x01800080, 8(%r8)  # tr corner
-	movq $0x01000180, 16(%r8)  # bl corner
-	movq $0x01800100, 24(%r8)  # tl corner
+	movq $0x08001800, (%r8)  # br corner
+	movq $0x18000800, 8(%r8)  # tr corner
+	movq $0x10001800, 16(%r8)  # bl corner
+	movq $0x18001000, 24(%r8)  # tl corner
 
-	movq $0x0380, 32(%r8)  # horizontal line
-	movq $0x008000800080, %r9
+	movq $0x3800, 32(%r8)  # horizontal line
+	movq $0x080008000800, %r9
 	movq %r9, 40(%r8)  # vertical line
 
-	movq $0x010000800080, %r9
+	movq $0x100008000800, %r9
 	movq %r9, 48(%r8)  # vbend tl
-	movq $0x008001000100, %r9
+	movq $0x080010001000, %r9
 	movq %r9, 56(%r8)  # vbend tr
-	movq $0x008000800100, %r9
+	movq $0x080008001000, %r9
 	movq %r9, 64(%r8)  # vbend bl
-	movq $0x010001000080, %r9
+	movq $0x100010000800, %r9
 	movq %r9, 72(%r8)  # vbend br
 
-	movq $0x03000080, 80(%r8)  # hbend br
-	movq $0x00c00100, 88(%r8)  # hbend bl
-	movq $0x00800300, 96(%r8)  # hbend tr
-	movq $0x010000c0, 104(%r8)  # hbend tl
+	movq $0x30000800, 80(%r8)  # hbend br
+	movq $0x0c001000, 88(%r8)  # hbend bl
+	movq $0x08003000, 96(%r8)  # hbend tr
+	movq $0x10000c00, 104(%r8)  # hbend tl
 	movq $0xffc0, 112(%r8)
 
 	# init falling color
@@ -187,7 +187,7 @@ gameLoop:
 		jge check_falling_piece_loop
 	end_checkfalling_piece_loop:
 
-	spawn_piece:
+	wrspawn_piece:
 		movq randomGen, %rax
 		movq $0, %rdx
 		movq $14, %rcx
@@ -388,7 +388,7 @@ gameLoop:
 	end_input:
 
 	incb gravityCounter
-	cmpb $15, gravityCounter
+	cmpb $30, gravityCounter
 	jl end_gravity_tick
 	gravity_tick:
 
@@ -430,6 +430,7 @@ gameLoop:
 
 		jmp end_put_block
 		put_block:
+			add $9, score
 			movb $1, canSwap
 			mov $15, %r8
 			put_block_loop:
@@ -634,17 +635,17 @@ gameLoop:
 	end_print_loop:
 
 	# print the held piece
-	movq $4, %r8  # i = 4 (row iterator)
+	movq $2, %r8  # i = 4 (row iterator)
 	
 	print_hold_loop:
-		movq $5, %r9  # j = 4
+		movq $4, %r9  # j = 4
 		movq $0, %r15
 		leaq pieces, %rcx
 		movq $0, %r10
 		movb holdPiece, %r10b
 		leaq (%rcx, %r10, 8), %rcx
 		movw (%rcx, %r8, 2), %r15w  # row to print
-		shr $6, %r15
+		shr $10, %r15
 		print_hold_row_loop:
 			# print num at (i, j)
 			movq $0, %rdx  # clear rdx
