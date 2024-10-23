@@ -38,10 +38,13 @@ scoreboard:
 .quad 0
 .quad 0
 
+currentName: .asciz "AAAA"
+currentNamePointer: .byte 0
+
 scoreboardNames:
-.asciz "1st"
-.asciz "2nd"
-.asciz "3rd"
+.ascii "ABCD"
+.ascii "EFGH"
+.ascii "IJKL"
 
 initBoard: .skip 32
 currentBoard: .skip 32
@@ -74,9 +77,11 @@ gravityCounter: .byte 0
 
 scoreString: .asciz "SCORE:"
 scoreboardString: .asciz "-- SCOREBOARD --"
+scoreboardEndString: .asciz "----------------"
 holdString: .asciz "HOLD"
 gameOverString: .asciz "--- Game over! ---"
 restartInputString: .asciz "press R to play again"
+nameString: .asciz "Name:"
 
 titleString: 
 .ascii " _______   _"
@@ -201,7 +206,7 @@ gameLoop:
 		jz no_player_death
 		player_death:  # player dies - no place to spawn
 			movb $2, gameState
-			jmp input_restart
+			jmp end_loop
 		no_player_death:
 		movq %r8, fallingBlock
 	end_spawn_piece:
@@ -317,6 +322,7 @@ gameLoop:
 		# update high score leaderboard if needed
 		movq score, %r8
 		leaq scoreboard, %r10
+		leaq scoreboardNames, %r11
 
 		# check 1st place in leaderboard
 		movq (%r10), %r9
@@ -330,6 +336,19 @@ gameLoop:
 			movq %r9, 8(%r10)
 			# 1st place = score
 			movq %r8, (%r10)
+
+			# 3rd name = old 2nd name
+			movl 4(%r11), %r12d
+			movl %r12d, 8(%r11)
+
+			# 2nd name = old 1st name
+			movl (%r11), %r12d
+			movl %r12d, 4(%r11)
+
+			# 1st name = current name
+			movl currentName, %r12d
+			movl %r12d, (%r11)
+
 			jmp end_update_scoreboard
 		end_update_1stplace:
 
@@ -342,6 +361,15 @@ gameLoop:
 			movq %r9, 16(%r10)
 			# 2nd place = score
 			movq %r8, 8(%r10)
+
+			# 3rd name = old 2nd name
+			movl 4(%r11), %r12d
+			movl %r12d, 8(%r11)
+
+			# 2nd name = current name
+			movl currentName, %r12d 
+			movl %r12d, 4(%r11)
+
 			jmp end_update_scoreboard
 		end_update_2ndplace:
 
@@ -352,6 +380,11 @@ gameLoop:
 		jle end_update_3rdplace
 			# 3rd place = score
 			movq %r8, 16(%r10)
+
+			# 3rd name = current name
+			movl currentName, %r12d
+			movl %r12d, 8(%r11)
+
 			jmp end_update_scoreboard
 		end_update_3rdplace:
 
@@ -895,7 +928,7 @@ gameLoop:
 	movq $2, %r8  # i = 2
 	leaq scoreboardNames, %r10
 	print_leaderboard_names_loop:
-		movq $2, %r9  # j = 2
+		movq $3, %r9  # j = 3
 
 		print_name_char_loop:
 			leaq (%r10, %r8, 4), %r11
@@ -919,7 +952,7 @@ gameLoop:
 
 		# add the ":" character
 
-		movq $17, %rdi
+		movq $18, %rdi
 		movq $9, %rsi
 		addq %r8, %rsi
 		addq %r8, %rsi
@@ -964,6 +997,27 @@ gameLoop:
 		inc %r13  # i++
 		jmp print_highscore_label_loop
 	end_print_highscore_label_loop:
+
+	# print "scoreboard end"
+	movq $0, %r13  # i = 0
+	leaq scoreboardEndString, %r12
+	print_highscore_end_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je 	end_print_highscore_end_label_loop
+
+		movq %r13, %rdi
+		addq $13, %rdi  # get x
+
+		movq $15, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_highscore_end_label_loop
+	end_print_highscore_end_label_loop:
 
 	jmp end_loop  # finished in-game loop
 
@@ -1071,6 +1125,53 @@ gameLoop:
 		jmp print_gameover_label_loop
 	end_print_gameover_label_loop:
 
+	# print current name
+	movq $0, %r13  # i = 0
+	leaq currentName, %r12
+	print_current_name_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_current_name_loop
+
+		movq %r13, %rdi
+		addq $20, %rdi  # get x
+
+		movq $17, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		cmpb currentNamePointer, %r13b
+		jne not_update_color
+			movq $10, %rcx
+		not_update_color:
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_current_name_loop
+	end_print_current_name_loop:
+
+	# print name label
+	movq $0, %r13  # i = 0
+	leaq nameString, %r12
+	print_name_label_loop:
+		mov $0, %rdx
+		movb (%r12, %r13, 1), %dl  # get char
+		cmpb $0, %dl
+		je end_print_name_label_loop
+
+		movq %r13, %rdi
+		addq $14, %rdi  # get x
+
+		movq $17, %rsi  # y = 3
+		movq $15, %rcx  # color = white
+
+		call putChar  # print
+
+		inc %r13  # i++
+		jmp print_name_label_loop
+	end_print_name_label_loop:
+
 	# print restart input label
 	movq $0, %r13  # i = 0
 	leaq restartInputString, %r12
@@ -1092,8 +1193,9 @@ gameLoop:
 		jmp print_restart_label_loop
 	end_print_restart_label_loop:
 
-	# check for "R" input
 	call readKeyCode
+
+	# check for "R" input
 	cmp $19, %rax
 	jne end_input_restart_gameover
 		# clear the bottom of the screen
@@ -1114,7 +1216,7 @@ gameLoop:
 			end_restart_clear_char:
 
 			decq %r9  # y--
-			cmpq $20, %r9
+			cmpq $17, %r9
 			jge restart_clear_row
 		end_restart_clear_row:
 
@@ -1122,6 +1224,79 @@ gameLoop:
 		movb $1, gameState
 		jmp input_restart
 	end_input_restart_gameover:
+
+	# check for "D" input (32)
+	cmpq $32, %rax
+	jne end_input_inc_name_pointer 
+		movb currentNamePointer, %r8b
+		incb %r8b
+
+		shl $6, %r8b
+		shr $6, %r8b
+
+		movb %r8b, currentNamePointer
+	end_input_inc_name_pointer:
+
+
+	# check for "A" input (30)
+	cmpq $30, %rax
+	jne end_input_dec_name_pointer 
+		movb currentNamePointer, %r8b
+		decb %r8b
+
+		shl $6, %r8b
+		shr $6, %r8b
+
+		movb %r8b, currentNamePointer
+	end_input_dec_name_pointer:
+
+	# check for "S" input (31)
+	cmpq $31, %rax
+	jne end_input_dec_name
+		leaq currentName, %rcx
+		movq $0, %r8
+		movb currentNamePointer, %r8b
+		movq $0, %r10
+		movb (%rcx, %r8), %r10b
+
+		decb %r10b
+
+		cmp $65, %r10
+		jge end_set_A
+			movq $90, %r10
+		end_set_A:
+
+		cmp $90, %r10
+		jle end_set_Z
+			movq $65, %r10
+		end_set_Z:
+
+		movb %r10b, (%rcx, %r8)
+	end_input_dec_name:
+
+	# check for "W" input (17)
+	cmpq $17, %rax
+	jne end_input_inc_name
+		leaq currentName, %rcx
+		movq $0, %r8
+		movb currentNamePointer, %r8b
+		movq $0, %r10
+		movb (%rcx, %r8), %r10b
+
+		incb %r10b
+
+		cmp $65, %r10
+		jge end_set_A_i
+			movq $90, %r10
+		end_set_A_i:
+
+		cmp $90, %r10
+		jle end_set_Z_i
+			movq $65, %r10
+		end_set_Z_i:
+
+		movb %r10b, (%rcx, %r8)
+	end_input_inc_name:
 
 	jmp end_loop  # end of game over loop
 
