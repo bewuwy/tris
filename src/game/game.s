@@ -19,8 +19,6 @@ along with gamelib-x64. If not, see <http://www.gnu.org/licenses/>.
 
 /*
 TODO:
-	- score
-	- saving high score
 	- hire a SCRUM master
 */
 
@@ -34,17 +32,17 @@ TODO:
 score: .quad 0
 
 scoreboard:
-.quad 0
-.quad 0
-.quad 0
+.quad 3000
+.quad 2115
+.quad 1024
 
 currentName: .asciz "AAAA"
 currentNamePointer: .byte 0
 
 scoreboardNames:
-.ascii "ABCD"
-.ascii "EFGH"
-.ascii "IJKL"
+.ascii "OTTO"
+.ascii "KOEN"
+.ascii "NEIL"
 
 initBoard: .skip 32
 currentBoard: .skip 32
