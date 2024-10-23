@@ -77,6 +77,7 @@ scoreboardString: .asciz "-- SCOREBOARD --"
 holdString: .asciz "HOLD"
 gameOverString: .asciz "--- Game over! ---"
 restartInputString: .asciz "press R to play again"
+youBeatString: .asciz "You beat"
 
 titleString: 
 .ascii " _______   _"
@@ -1087,6 +1088,117 @@ gameLoop:
 		inc %r13  # i++
 		jmp print_restart_label_loop
 	end_print_restart_label_loop:
+
+	leaq scoreboard, %r10
+	movq score, %r8
+	movq $0, %r13  # beat place name address = null
+
+	# check 1st place in leaderboard
+	movq (%r10), %r9
+
+	cmpq %r9, %r8
+	jne end_check_1stplace # score <= highScore, skip		
+		leaq scoreboardNames, %r13
+		jmp end_check_scoreboard
+	end_check_1stplace:
+
+	# check 2nd place
+	movq 8(%r10), %r9
+
+	cmpq %r9, %r8
+	jne end_check_2ndplace
+		leaq scoreboardNames, %r13
+		addq $4, %r13
+		jmp end_check_scoreboard
+	end_check_2ndplace:
+
+	# check 3rd place
+	movq 16(%r10), %r9
+
+	cmpq %r9, %r8
+	jne end_check_3rdplace
+		leaq scoreboardNames, %r13
+		addq $8, %r13
+		jmp end_check_scoreboard
+	end_check_3rdplace:
+
+	end_check_scoreboard:
+
+
+	// # print score value
+	// movq (%r10), %r8
+	// movq $13, %r9  # i = 13
+
+	// print_score_loop2:
+	// 	movq %r8, %rax  # div by 10 to get last digit
+	// 	movq $10, %rcx
+	// 	movq $0, %rdx
+	// 	div %rcx  # last digit is in rdx
+	// 	addq $48, %rdx  # convert last digit to ASCII
+	// 	movq %rax, %r8
+
+	// 	movq %r9, %rdi  # x = i
+	// 	addq $12, %rdi
+	// 	movq $20, %rsi  # y = 1
+	// 	call putChar
+
+	// 	dec %r9
+	// 	cmp $8, %r9
+	// 	jge print_score_loop2
+	// end_print_score_loop2:
+
+	# beat someone -> print
+	cmpq $0, %r13
+	je end_print_beat
+		movq $0, %r11  # i = 0
+		leaq youBeatString, %r12
+
+		print_you_beat_label_loop:
+			mov $0, %rdx
+			movb (%r12, %r11, 1), %dl  # get char
+			cmpb $0, %dl
+			je end_print_you_beat_label_loop
+
+			movq %r11, %rdi
+			addq $30, %rdi  # get x
+
+			movq $24, %rsi  # y = 3
+			movq $15, %rcx  # color = white
+
+			call putChar  # print
+
+			inc %r11  # i++
+			jmp print_you_beat_label_loop
+		end_print_you_beat_label_loop:
+
+		movq $0, %r11  # i = 0
+
+		print_you_beat_name_loop:
+			mov $0, %rdx
+			movb (%r13, %r11, 1), %dl  # get char
+			cmpb $0, %dl
+			je end_print_you_beat_name_loop
+
+			movq %r11, %rdi
+			addq $39, %rdi  # get x
+
+			movq $24, %rsi  # y = 3
+			movq $15, %rcx  # color = white
+
+			call putChar  # print
+
+			inc %r11  # i++
+			jmp print_you_beat_name_loop
+		end_print_you_beat_name_loop:
+
+		# print a "!"
+		movq $42, %rdi
+		movq $24, %rsi
+
+		movb $'!', %dl
+		call putChar
+
+	end_print_beat:
 
 	# check for "R" input
 	call readKeyCode
