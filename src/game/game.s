@@ -39,9 +39,9 @@ scoreboard:
 .quad 0
 
 scoreboardNames:
-.asciz "ABC"
-.asciz "DEF"
-.asciz "GHI"
+.asciz "1st"
+.asciz "2nd"
+.asciz "3rd"
 
 initBoard: .skip 32
 currentBoard: .skip 32
@@ -307,7 +307,7 @@ gameLoop:
 	cmp $31, %rax
 	jne end_input_down
 	input_down:
-		movq $100, gravityCounter
+		movb $100, gravityCounter
 	end_input_down:
 
 	# check for "R" input (19)
@@ -377,12 +377,17 @@ gameLoop:
 			dec %r8
 			jge restart_colors_loop
 		end_restart_colors_loop:
+
+		# restart held piece
+		movb $5, holdPiece
+		movb $1, canSwap
+
 		ret  # finish the gameLoop early
 	end_input_restart:
 
 	end_input:
 
-	inc gravityCounter
+	incb gravityCounter
 	cmpb $15, gravityCounter
 	jl end_gravity_tick
 	gravity_tick:
@@ -421,11 +426,11 @@ gameLoop:
 			jge save_gravity_loop
 		end_save_gravity_loop:
 
-		mov $0, gravityCounter  # reset gravity counter
+		movb $0, gravityCounter  # reset gravity counter
 
 		jmp end_put_block
 		put_block:
-			mov $1, canSwap
+			movb $1, canSwap
 			mov $15, %r8
 			put_block_loop:
 				leaq fallingBlock, %rcx
