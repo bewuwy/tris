@@ -516,7 +516,10 @@ gameLoop:
 			je end_inc_offset
 			inc_offset:
 				inc %r9
-				movq %r9, score
+				mov %r9, %rax
+				mov $100, %rcx
+				mul %rcx
+				add %rax, score
 				dec %r8
 				jge shift_line_loop
 				jmp end_shift_line_loop
